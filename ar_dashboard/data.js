@@ -92,7 +92,9 @@ const DASHBOARD_DATA = {
         // --- COMPARATIVA ANUAL DE APLICACIÓN DE EFECTIVO ---
         appliedCashHistory: {
             currentYear: [1850000, 1920000, 1780000, 2100000, 1950000, 2200000], // Montos aplicados por mes (2026)
-            prevYear: [1650000, 1720000, 1580000, 1800000, 1750000, 1900000]     // Montos aplicados por mes (2025)
+            prevYear: [1650000, 1720000, 1580000, 1800000, 1750000, 1900000],    // Montos aplicados por mes (2025)
+            year2024: [1550000, 1620000, 1480000, 1700000, 1650000, 1800000],    // Montos aplicados por mes (2024)
+            year2023: [1450000, 1520000, 1380000, 1600000, 1550000, 1700000]     // Montos aplicados por mes (2023)
         }
     }
 };

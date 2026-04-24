@@ -133,7 +133,10 @@ function switchTab(id, btn) {
 }
 
 // ── HELPERS ────────────────────────────────────────────────────
-const fmt = n => '$' + n.toLocaleString('es-CR');
+const fmt = n => {
+  const locale = currentLang === 'en' ? 'en-US' : 'es-CR';
+  return '$' + n.toLocaleString(locale);
+};
 const pct = (a, t) => ((a / t) * 100).toFixed(1) + '%';
 const COLORS = {
   blue: '#3b82f6',
@@ -598,46 +601,59 @@ function buildCashApp() {
 
     // Insight 4: YoY Comparison Chart Analysis
     const history = ca.appliedCashHistory;
-    if (history && history.currentYear && history.prevYear) {
-      const curr = history.currentYear;
-      const prev = history.prevYear;
+    if (history && Object.keys(history).length >= 1) {
+      const yearKeys = Object.keys(history);
+      const key1 = yearKeys[0];
+      const key2 = yearKeys[1]; // might be undefined
+
+      const curr = history[key1];
+      const prev = key2 ? history[key2] : null;
       const months = DATA.months;
 
-      const total2026 = curr.reduce((s, v) => s + v, 0);
-      const total2025 = prev.reduce((s, v) => s + v, 0);
-      const yoyPct = ((total2026 - total2025) / total2025 * 100).toFixed(1);
-
-      // Best and worst month by delta
-      const deltas = curr.map((v, i) => ({ month: months[i], delta: v - prev[i], pct: ((v - prev[i]) / prev[i] * 100).toFixed(1) }));
-      const bestMonth = deltas.reduce((a, b) => b.delta > a.delta ? b : a);
-      const worstMonth = deltas.reduce((a, b) => b.delta < a.delta ? b : a);
-
-      // Acceleration: compare avg growth of last 3 vs first 3 months
-      const firstHalf = deltas.slice(0, Math.floor(deltas.length / 2));
-      const secondHalf = deltas.slice(Math.floor(deltas.length / 2));
-      const avgFirst = firstHalf.reduce((s, d) => s + parseFloat(d.pct), 0) / firstHalf.length;
-      const avgSecond = secondHalf.reduce((s, d) => s + parseFloat(d.pct), 0) / secondHalf.length;
-      const isAccelerating = avgSecond > avgFirst;
-      const trendLabel = isAccelerating
-        ? `<span style="color:#10b981">acelerando ▲</span> (promedio reciente +${avgSecond.toFixed(1)}% vs inicio +${avgFirst.toFixed(1)}%)`
-        : `<span style="color:#f59e0b">desacelerando ▼</span> (promedio reciente +${avgSecond.toFixed(1)}% vs inicio +${avgFirst.toFixed(1)}%)`;
-
-      const yoySign = yoyPct >= 0 ? '+' : '';
-      const yoyColor = yoyPct >= 0 ? '#10b981' : '#ef4444';
-
+      const totalCurr = curr.reduce((s, v) => s + v, 0);
+      const label1 = key1.replace('year', '').replace('currentYear', '2026');
+      
       const yoyInsight = document.createElement('li');
       yoyInsight.style.marginTop = "10px";
       yoyInsight.style.paddingTop = "10px";
       yoyInsight.style.borderTop = "1px solid rgba(255,255,255,0.06)";
-      yoyInsight.innerHTML = `
-        <strong>📈 Análisis Interanual (2026 vs 2025):</strong>
-        El efectivo aplicado acumulado en 2026 es de <strong style="color:#3b82f6">${fmt(total2026)}</strong>,
-        superando los <strong style="color:rgba(255,255,255,0.5)">${fmt(total2025)}</strong> del mismo período en 2025
-        — un crecimiento de <strong style="color:${yoyColor}">${yoySign}${yoyPct}%</strong>.
-        El mes con mayor mejora fue <strong style="color:#10b981">${bestMonth.month} (+${bestMonth.pct}%)</strong>
-        ${parseFloat(worstMonth.pct) < parseFloat(bestMonth.pct) ? `y el de menor impulso fue <strong style="color:#f59e0b">${worstMonth.month} (+${worstMonth.pct}%)</strong>.` : '.'}
-        La tendencia de crecimiento está ${trendLabel}.
-        <em style="color:var(--text2)"> Recomendación: ${isAccelerating ? 'Mantener el ritmo actual y evaluar automatización adicional para sostener el crecimiento.' : 'Revisar los meses recientes con menor delta para identificar cuellos de botella operativos.'}</em>`;
+
+      if (prev) {
+        const totalPrev = prev.reduce((s, v) => s + v, 0);
+        const yoyPct = ((totalCurr - totalPrev) / totalPrev * 100).toFixed(1);
+        const label2 = key2.replace('year', '').replace('prevYear', '2025');
+
+        // Best and worst month by delta
+        const deltas = curr.map((v, i) => ({ month: months[i], delta: v - (prev[i] || 0), pct: prev[i] ? ((v - prev[i]) / prev[i] * 100).toFixed(1) : '0' }));
+        const bestMonth = deltas.reduce((a, b) => b.delta > a.delta ? b : a);
+        const worstMonth = deltas.reduce((a, b) => b.delta < a.delta ? b : a);
+
+        // Acceleration: compare avg growth of last 3 vs first 3 months
+        const firstHalf = deltas.slice(0, Math.floor(deltas.length / 2));
+        const secondHalf = deltas.slice(Math.floor(deltas.length / 2));
+        const avgFirst = firstHalf.reduce((s, d) => s + parseFloat(d.pct), 0) / (firstHalf.length || 1);
+        const avgSecond = secondHalf.reduce((s, d) => s + parseFloat(d.pct), 0) / (secondHalf.length || 1);
+        const isAccelerating = avgSecond > avgFirst;
+        const trendLabel = isAccelerating
+          ? `<span style="color:#10b981">acelerando ▲</span> (promedio reciente +${avgSecond.toFixed(1)}% vs inicio +${avgFirst.toFixed(1)}%)`
+          : `<span style="color:#f59e0b">desacelerando ▼</span> (promedio reciente +${avgSecond.toFixed(1)}% vs inicio +${avgFirst.toFixed(1)}%)`;
+
+        const yoySign = yoyPct >= 0 ? '+' : '';
+        const yoyColor = yoyPct >= 0 ? '#10b981' : '#ef4444';
+
+        yoyInsight.innerHTML = `
+          <strong>📈 Análisis Interanual (${label1} vs ${label2}):</strong>
+          El efectivo aplicado acumulado en ${label1} es de <strong style="color:#3b82f6">${fmt(totalCurr)}</strong>,
+          ${totalCurr > totalPrev ? 'superando' : 'por debajo de'} los <strong style="color:rgba(255,255,255,0.5)">${fmt(totalPrev)}</strong> de ${label2}
+          — un ${totalCurr > totalPrev ? 'crecimiento' : 'cambio'} de <strong style="color:${yoyColor}">${yoySign}${yoyPct}%</strong>.
+          El mes con mayor mejora fue <strong style="color:#10b981">${bestMonth.month} (+${bestMonth.pct}%)</strong>.
+          La tendencia está ${trendLabel}.`;
+      } else {
+        yoyInsight.innerHTML = `
+          <strong>📈 Análisis de Efectivo Aplicado (${label1}):</strong>
+          El efectivo aplicado acumulado en ${label1} es de <strong style="color:#3b82f6">${fmt(totalCurr)}</strong>.
+          No hay datos de años anteriores para realizar una comparativa interanual, pero el flujo se mantiene estable.`;
+      }
       insightsList.appendChild(yoyInsight);
     }
   }
@@ -676,12 +692,26 @@ function buildCashApp() {
 
   buildCashComparison();
 
-  // Chart 2: Aging of Unapplied Cash
-  const total = ca.kpis.unapplied;
-  const d0_3 = total * 0.6;
-  const d4_7 = total * 0.25;
-  const d8_14 = total * 0.1;
-  const d15p = total * 0.05;
+  // Chart 2: Aging of Unapplied Cash (Data Driven)
+  const items = ca.items || [];
+  let d0_3 = 0, d4_7 = 0, d8_14 = 0, d15p = 0;
+  
+  items.forEach(item => {
+    const days = Number(item.days) || 0;
+    if (days <= 3) d0_3 += item.amount;
+    else if (days <= 7) d4_7 += item.amount;
+    else if (days <= 14) d8_14 += item.amount;
+    else d15p += item.amount;
+  });
+
+  // If no items, fallback to dummy data or zeros
+  if (items.length === 0) {
+    const total = ca.kpis.unapplied || 0;
+    d0_3 = total * 0.6;
+    d4_7 = total * 0.25;
+    d8_14 = total * 0.1;
+    d15p = total * 0.05;
+  }
 
   if (!charts.caAging) {
     charts.caAging = new Chart(document.getElementById('caAgingChart'), {
@@ -772,99 +802,145 @@ function buildCashComparison() {
   const el = document.getElementById('caComparisonChart');
   if (!el) return;
 
-  const curr = history.currentYear;
-  const prev = history.prevYear;
-  const months = DATA.months;
+  const yearKeys = Object.keys(history);
+  if (yearKeys.length === 0) return;
+
+  const allMonths = DATA.months;
   const isEn = typeof currentLang !== 'undefined' && currentLang === 'en';
 
+  // Filter out empty keys and sort them so currentYear/prevYear are first if they exist
+  const validKeys = yearKeys.filter(k => k.trim() !== '' && history[k] && history[k].length > 0);
+  if (validKeys.length === 0) return;
+
+  const key1 = validKeys[0];
+  const key2 = validKeys[1];
+  const data1 = history[key1] || [];
+  const data2 = history[key2] || [];
+  
+  // Sync labels with data length to avoid gaps on the right
+  const months = allMonths.slice(0, data1.length);
+
+  const getLabel = (k) => {
+    let l = k.replace('year', '').replace('Year', '');
+    const low = l.toLowerCase();
+    if (low.includes('current') || low.includes('actual') || k === 'currentYear') {
+      return isEn ? 'Current (2026)' : 'Actual (2026)';
+    }
+    if (low.includes('prev') || low.includes('anterior') || k === 'prevYear') {
+      return isEn ? 'Previous (2025)' : 'Anterior (2025)';
+    }
+    // If it's just a number, leave it. If not, capitalize.
+    if (isNaN(l)) l = l.charAt(0).toUpperCase() + l.slice(1);
+    return l;
+  };
+
+  const label1 = getLabel(key1);
+  const label2 = key2 ? getLabel(key2) : '';
+
   // ── Populate KPI summary pills ──────────────────────────────────
-  const total2026 = curr.reduce((s, v) => s + v, 0);
-  const total2025 = prev.reduce((s, v) => s + v, 0);
-  const growthPct = ((total2026 - total2025) / total2025 * 100).toFixed(1);
-  const bestIdx = curr.indexOf(Math.max(...curr));
+  const total1 = data1.reduce((s, v) => s + v, 0);
+  const total2 = data2.length > 0 ? data2.reduce((s, v) => s + v, 0) : 0;
+  
+  const growthPct = total2 > 0 ? ((total1 - total2) / total2 * 100).toFixed(1) : '0.0';
+  const bestIdx = data1.indexOf(Math.max(...data1));
 
   const el2026 = document.getElementById('compTotal2026');
   const el2025 = document.getElementById('compTotal2025');
   const elGrowth = document.getElementById('compGrowth');
   const elBest = document.getElementById('compBestMonth');
 
-  if (el2026) el2026.textContent = fmt(total2026);
-  if (el2025) el2025.textContent = fmt(total2025);
-  if (elGrowth) {
-    const sign = growthPct >= 0 ? '+' : '';
-    elGrowth.textContent = `${sign}${growthPct}%`;
-    elGrowth.style.color = growthPct >= 0 ? '#10b981' : '#ef4444';
+  if (el2026) {
+    el2026.textContent = fmt(total1);
+    const labelEl = el2026.previousElementSibling;
+    if (labelEl) labelEl.textContent = (isEn ? 'Total Applied ' : 'Total Aplicado ') + label1;
   }
-  if (elBest) elBest.textContent = `${months[bestIdx]} · ${fmt(curr[bestIdx])}`;
+  if (el2025) {
+    if (key2) {
+      el2025.textContent = fmt(total2);
+      const labelEl = el2025.previousElementSibling;
+      if (labelEl) labelEl.textContent = (isEn ? 'Total Applied ' : 'Total Aplicado ') + label2;
+      el2025.parentElement.style.display = '';
+    } else {
+      el2025.parentElement.style.display = 'none';
+    }
+  }
+  if (elGrowth) {
+    if (key2) {
+      const sign = growthPct >= 0 ? '+' : '';
+      elGrowth.textContent = `${sign}${growthPct}%`;
+      elGrowth.style.color = +growthPct >= 0 ? '#10b981' : '#ef4444';
+      elGrowth.parentElement.style.display = '';
+    } else {
+      elGrowth.parentElement.style.display = 'none';
+    }
+  }
+  if (elBest) {
+    const bestLabel = (isEn ? 'Best Month (' : 'Mejor Mes (') + label1 + ')';
+    const labelEl = elBest.previousElementSibling;
+    if (labelEl) labelEl.textContent = bestLabel;
+    elBest.textContent = `${months[bestIdx]} · ${fmt(data1[bestIdx])}`;
+  }
 
   // ── Populate month delta badges ─────────────────────────────────
   const deltaRow = document.getElementById('caCompDeltaRow');
-  if (deltaRow && deltaRow.children.length === 0) {
-    months.forEach((m, i) => {
-      const delta = curr[i] - prev[i];
-      const pct = ((delta / prev[i]) * 100).toFixed(1);
-      const sign = delta >= 0 ? '+' : '';
-      const cls = delta >= 0 ? 'positive' : 'negative';
-      const badge = document.createElement('div');
-      badge.className = `comp-delta-badge ${cls}`;
-      badge.innerHTML = `<span class="delta-month">${m}</span><span>${sign}${pct}%</span>`;
-      deltaRow.appendChild(badge);
-    });
+  if (deltaRow) {
+    deltaRow.innerHTML = ''; // Always clear to rebuild
+    if (key2) {
+      months.forEach((m, i) => {
+        const val1 = data1[i] || 0;
+        const val2 = data2[i] || 0;
+        if (val2 === 0) return;
+        
+        const delta = val1 - val2;
+        const pct = ((delta / val2) * 100).toFixed(1);
+        const sign = delta >= 0 ? '+' : '';
+        const cls = delta >= 0 ? 'positive' : 'negative';
+        const badge = document.createElement('div');
+        badge.className = `comp-delta-badge ${cls}`;
+        badge.innerHTML = `<span class="delta-month">${m}</span><span>${sign}${pct}%</span>`;
+        deltaRow.appendChild(badge);
+      });
+    }
   }
 
   // ── Build or update chart ───────────────────────────────────────
   if (!charts.caComparison) {
+    const datasets = [];
+    
+    // Update the chart tag (e.g. "2026 vs 2025")
+    const chartTag = document.querySelector('#tab-cashapp .chart-tag');
+    if (chartTag && validKeys.length >= 2) {
+      chartTag.textContent = `${label1} vs ${label2}`;
+    }
+
+    const COLORS_LIST = ['#3b82f6', 'rgba(255,255,255,0.4)', '#f59e0b', '#10b981', '#ef4444', '#8b5cf6', '#eab308'];
+
+    validKeys.forEach((yk, idx) => {
+      const label = getLabel(yk);
+      const color = COLORS_LIST[idx % COLORS_LIST.length];
+      const isPrimary = idx === 0;
+
+      datasets.push({
+        label: label,
+        data: history[yk],
+        borderColor: color,
+        backgroundColor: isPrimary ? 'rgba(59,130,246,0.12)' : 'transparent',
+        borderDash: isPrimary ? [] : [6, 4],
+        fill: isPrimary,
+        tension: 0.45,
+        pointRadius: isPrimary ? 5 : 3,
+        pointHoverRadius: isPrimary ? 8 : 6,
+        pointBackgroundColor: color,
+        borderWidth: isPrimary ? 3 : 2,
+        order: idx + 1
+      });
+    });
+
     charts.caComparison = new Chart(el, {
       type: 'line',
       data: {
         labels: months,
-        datasets: [
-          // Dataset 0: Current Year (2026) — main solid line
-          {
-            label: isEn ? 'Current Year (2026)' : 'Año Actual (2026)',
-            data: curr,
-            borderColor: '#3b82f6',
-            backgroundColor: 'rgba(59,130,246,0.12)',
-            fill: true,
-            tension: 0.45,
-            pointRadius: 5,
-            pointHoverRadius: 8,
-            pointBackgroundColor: '#3b82f6',
-            pointBorderColor: '#090A0F',
-            pointBorderWidth: 2,
-            borderWidth: 3,
-            order: 1
-          },
-          // Dataset 1: Previous Year (2025) — dashed ghost line
-          {
-            label: isEn ? 'Previous Year (2025)' : 'Año Anterior (2025)',
-            data: prev,
-            borderColor: 'rgba(255,255,255,0.25)',
-            backgroundColor: 'rgba(255,255,255,0.0)',
-            borderDash: [6, 4],
-            fill: false,
-            tension: 0.45,
-            pointRadius: 3,
-            pointHoverRadius: 6,
-            pointBackgroundColor: 'rgba(255,255,255,0.3)',
-            pointBorderColor: 'transparent',
-            borderWidth: 2,
-            order: 2
-          },
-          // Dataset 2: Gap fill band — invisible line at prev year, fills UP to curr
-          {
-            label: '_gap',
-            data: prev,
-            borderColor: 'transparent',
-            backgroundColor: 'rgba(59,130,246,0.08)',
-            fill: '-1',      // fill between this and dataset 0 (curr year)
-            tension: 0.45,
-            pointRadius: 0,
-            pointHoverRadius: 0,
-            borderWidth: 0,
-            order: 3
-          }
-        ]
+        datasets: datasets
       },
       options: {
         responsive: true,
@@ -874,11 +950,12 @@ function buildCashComparison() {
           legend: {
             display: true,
             position: 'top',
-            labels: {
-              color: COLORS.text,
+            labels: { 
+              color: COLORS.text, 
               font: { size: 11 },
-              // Hide the invisible gap dataset from legend
-              filter: (item) => item.text !== '_gap'
+              padding: 20,
+              usePointStyle: false,
+              boxWidth: 30
             }
           },
           tooltip: {
@@ -892,48 +969,38 @@ function buildCashComparison() {
               title: (items) => months[items[0].dataIndex],
               beforeBody: () => '─────────────────',
               label: (ctx) => {
-                if (ctx.dataset.label === '_gap') return null;
                 const idx = ctx.dataIndex;
-                if (ctx.datasetIndex === 0) {
-                  const delta = curr[idx] - prev[idx];
-                  const pct = ((delta / prev[idx]) * 100).toFixed(1);
-                  const arrow = delta >= 0 ? '▲' : '▼';
-                  const sign = delta >= 0 ? '+' : '';
-                  return [
-                    `  2026: ${fmt(curr[idx])}`,
-                    `  2025: ${fmt(prev[idx])}`,
-                    `  Δ YoY: ${sign}${fmt(Math.abs(delta))} (${arrow} ${Math.abs(pct)}%)`
-                  ];
-                }
-                return null;
+                const val = ctx.raw;
+                return `  ${ctx.dataset.label}: ${fmt(val)}`;
               }
             }
           }
         },
         scales: {
-          x: {
-            grid: { display: false },
-            ticks: { color: COLORS.text2, font: { size: 11 }, padding: 6 }
-          },
-          y: {
-            grid: { color: 'rgba(255,255,255,0.04)', borderDash: [4, 4] },
-            ticks: {
-              color: COLORS.text2,
-              font: { size: 11 },
-              padding: 8,
-              callback: v => '$' + (v / 1000000).toFixed(1) + 'M'
-            },
-            border: { display: false }
-          }
+          x: { grid: { display: false }, ticks: { color: COLORS.text2, font: { size: 11 }, padding: 6 } },
+          y: { grid: { color: 'rgba(255,255,255,0.04)', borderDash: [4, 4] }, ticks: { color: COLORS.text2, font: { size: 11 }, padding: 8, callback: v => '$' + (v / 1000000).toFixed(1) + 'M' }, border: { display: false } }
         }
       }
     });
   } else {
-    // Update existing chart data
-    charts.caComparison.data.datasets[0].data = curr;
-    charts.caComparison.data.datasets[1].data = prev;
-    charts.caComparison.data.datasets[2].data = prev;
-    charts.caComparison.update();
+    // Re-initialize if the number of years changed or labels changed
+    const currentDatasetCount = charts.caComparison.data.datasets.length;
+    const newDatasetCount = Object.keys(history).length;
+    
+    if (currentDatasetCount !== newDatasetCount) {
+      charts.caComparison.destroy();
+      delete charts.caComparison;
+      buildCashComparison(); // Re-run to create fresh
+    } else {
+      // Just update data of existing datasets
+      const yearKeys = Object.keys(history);
+      yearKeys.forEach((yk, idx) => {
+        if (charts.caComparison.data.datasets[idx]) {
+          charts.caComparison.data.datasets[idx].data = history[yk];
+        }
+      });
+      charts.caComparison.update();
+    }
   }
 }
 
@@ -989,27 +1056,65 @@ function buildSegmentation() {
 
 // ── PROJECTION ─────────────────────────────────────────────────
 function buildProjectionChart() {
-  if (charts.projection) return;
-  // weekly buckets
-  const weeks = ['Semana 1 (Mar 1–7)', 'Semana 2 (Mar 8–14)', 'Semana 3 (Mar 15–21)', 'Semana 4 (Mar 22–31)'];
-  const ranges = [['Mar 04', 'Mar 06', 'Mar 07'], ['Mar 08', 'Mar 10', 'Mar 12', 'Mar 14'], ['Mar 15', 'Mar 18', 'Mar 20'], ['Mar 22', 'Mar 25', 'Mar 26', 'Mar 28', 'Mar 31']];
-  const totals = ranges.map(r => DATA.projection.filter(p => r.includes(p.week)).reduce((s, p) => s + p.amount, 0));
-  const byProb = (r, pr) => DATA.projection.filter(p => r.includes(p.week) && p.prob === pr).reduce((s, p) => s + p.amount, 0);
+  if (charts.projection) {
+    charts.projection.destroy();
+    delete charts.projection;
+  }
+  
+  // ── Weekly detection logic ──────────────────────────────────────
+  // Instead of hardcoded strings, we'll try to extract the day number
+  const getWeekIndex = (weekStr) => {
+    if (!weekStr) return -1;
+    // Extract numbers from string (e.g., "Mar 04" -> 4, "2026-03-05" -> 5)
+    const matches = weekStr.match(/\d+/g);
+    if (!matches || matches.length === 0) return -1;
+    
+    // Assume the last or only number is the day if it's <= 31
+    const day = parseInt(matches[matches.length - 1]);
+    if (day >= 1 && day <= 7) return 0;
+    if (day >= 8 && day <= 14) return 1;
+    if (day >= 15 && day <= 21) return 2;
+    if (day >= 22) return 3;
+    return -1;
+  };
+
+  const isEn = currentLang === 'en';
+  const weeks = isEn 
+    ? ['Week 1 (Mar 1–7)', 'Week 2 (Mar 8–14)', 'Week 3 (Mar 15–21)', 'Week 4 (Mar 22–31)']
+    : ['Semana 1 (Mar 1–7)', 'Semana 2 (Mar 8–14)', 'Semana 3 (Mar 15–21)', 'Semana 4 (Mar 22–31)'];
+
+  const dataByWeek = [
+    { high: 0, med: 0, low: 0 },
+    { high: 0, med: 0, low: 0 },
+    { high: 0, med: 0, low: 0 },
+    { high: 0, med: 0, low: 0 }
+  ];
+
+  DATA.projection.forEach(p => {
+    const idx = getWeekIndex(p.week);
+    if (idx !== -1 && dataByWeek[idx]) {
+      dataByWeek[idx][p.prob] += p.amount;
+    }
+  });
+
   charts.projection = new Chart(document.getElementById('projectionChart'), {
     type: 'bar',
     data: {
       labels: weeks,
       datasets: [
-        { label: 'Alta Probabilidad', data: ranges.map(r => byProb(r, 'high')), backgroundColor: COLORS.green, borderRadius: 6, stack: 's' },
-        { label: 'Media Probabilidad', data: ranges.map(r => byProb(r, 'med')), backgroundColor: COLORS.yellow, borderRadius: 0, stack: 's' },
-        { label: 'Baja Probabilidad', data: ranges.map(r => byProb(r, 'low')), backgroundColor: COLORS.red, borderRadius: 0, stack: 's' },
+        { label: isEn ? 'High Probability' : 'Alta Probabilidad', data: dataByWeek.map(w => w.high), backgroundColor: COLORS.green, borderRadius: 6, stack: 's' },
+        { label: isEn ? 'Medium Probability' : 'Media Probabilidad', data: dataByWeek.map(w => w.med), backgroundColor: COLORS.yellow, borderRadius: 0, stack: 's' },
+        { label: isEn ? 'Low Probability' : 'Baja Probabilidad', data: dataByWeek.map(w => w.low), backgroundColor: COLORS.red, borderRadius: 0, stack: 's' },
       ]
     },
     options: {
       responsive: true, maintainAspectRatio: false,
       layout: { padding: 10 },
       plugins: { legend: { display: true, position: 'top', labels: { boxWidth: 10, font: { size: 10 } } } },
-      scales: { x: { stacked: true, grid: { display: false }, ticks: { font: { size: 10 } } }, y: { stacked: true, grid: { color: '#232840' }, ticks: { font: { size: 10 }, callback: v => '$' + (v / 1000).toFixed(0) + 'K' } } }
+      scales: { 
+        x: { stacked: true, grid: { display: false }, ticks: { font: { size: 10 } } }, 
+        y: { stacked: true, grid: { color: '#232840' }, ticks: { font: { size: 10 }, callback: v => '$' + (v / 1000).toFixed(0) + 'K' } } 
+      }
     }
   });
 }
@@ -1174,6 +1279,13 @@ function loadFileData(file, ext) {
 
 // ── CSV Parser ──────────────────────────────────────────────────
 function parseCSVAndApply(csvText) {
+  // Helper to safely parse numbers from strings with commas, symbols, etc.
+  const n = (val) => {
+    if (val === undefined || val === null || val === '') return 0;
+    const clean = val.toString().replace(/[^-0-9.]/g, '');
+    return parseFloat(clean) || 0;
+  };
+
   // Try to find sections, if Excel fused them we will parse row by row grouping headers
   const lines = csvText.trim().split('\n').map(l => l.trim().replace(/\r/g, '')).filter(l => l && !l.startsWith('#'));
   const parsed = {};
@@ -1192,20 +1304,20 @@ function parseCSVAndApply(csvText) {
     if (headers.includes('dso_actual') || headers.includes('total_ar')) {
       const r = rows[0] || {};
       parsed.dso = {
-        actual: +(r.dso_actual || 0),
-        prev: +(r.dso_prev || 0),
-        best: +(r.dso_best || 0),
-        target: +(r.dso_target || 0)
+        actual: n(r.dso_actual),
+        prev: n(r.dso_prev),
+        best: n(r.dso_best),
+        target: n(r.dso_target)
       };
-      if (r.total_ar) parsed.totalAR = +r.total_ar;
-      if (r.collected) parsed.collected = +r.collected;
+      if (r.total_ar) parsed.totalAR = n(r.total_ar);
+      if (r.collected) parsed.collected = n(r.collected);
     }
 
     if (headers.includes('aging_bucket') && headers.includes('amount')) {
       parsed.aging = {};
       rows.forEach(r => {
         const b = (r.aging_bucket || r.bucket || '').toLowerCase();
-        const v = +(r.amount || r.saldo || 0);
+        const v = n(r.amount || r.saldo);
         if (b.includes('corr') || b === 'current') parsed.aging.current = v;
         else if (b.includes('1') || b.includes('30')) parsed.aging.d30 = v;
         else if (b.includes('31') || b.includes('60')) parsed.aging.d60 = v;
@@ -1217,11 +1329,11 @@ function parseCSVAndApply(csvText) {
     if (headers.includes('name') && headers.includes('balance') && headers.includes('overdue')) {
       parsed.clients = rows.map(r => ({
         name: r.name,
-        balance: +r.balance,
-        overdue: +r.overdue,
-        limitExc: +(r.limitexc || r.limit_exc || 0),
+        balance: n(r.balance),
+        overdue: n(r.overdue),
+        limitExc: n(r.limitexc || r.limit_exc),
         trend: r.trend || 'stable',
-        score: +(r.score || 50),
+        score: n(r.score || 50),
         seg: r.seg || 'stable'
       }));
     }
@@ -1230,24 +1342,24 @@ function parseCSVAndApply(csvText) {
       parsed.projection = rows.map(r => ({
         client: r.client,
         week: r.week,
-        amount: +r.amount,
+        amount: n(r.amount),
         prob: r.prob || 'med'
       }));
     }
 
     if (headers.includes('month') && headers.includes('dso')) {
       parsed.months = rows.map(r => r.month);
-      parsed.dsoHistory = rows.map(r => +r.dso);
+      parsed.dsoHistory = rows.map(r => n(r.dso));
     }
 
     if (headers.some(h => h.includes('ca_unapplied')) || headers.some(h => h.includes('ca_automatch'))) {
       const r = rows[0] || {};
       parsed.cashapp = parsed.cashapp || { kpis: {}, suspense: {}, items: [] };
       parsed.cashapp.kpis = {
-        unapplied: Number(r.ca_unapplied) || 0,
-        suspense: Number(r.ca_suspense) || 0,
-        autoMatch: Number(r.ca_automatch) || 0,
-        manTime: Number(r.ca_mantime) || 0
+        unapplied: n(r.ca_unapplied),
+        suspense: n(r.ca_suspense),
+        autoMatch: n(r.ca_automatch),
+        manTime: n(r.ca_mantime)
       };
     }
 
@@ -1255,10 +1367,10 @@ function parseCSVAndApply(csvText) {
       const r = rows[0] || {};
       parsed.cashapp = parsed.cashapp || { kpis: {}, suspense: {}, items: [] };
       parsed.cashapp.suspense = {
-        noRef: Number(r.sus_noref) || 0,
-        invalidAmt: Number(r.sus_invalidamt) || 0,
-        noClient: Number(r.sus_noclient) || 0,
-        doublePay: Number(r.sus_doublepay) || 0
+        noRef: n(r.sus_noref),
+        invalidAmt: n(r.sus_invalidamt),
+        noClient: n(r.sus_noclient),
+        doublePay: n(r.sus_doublepay)
       };
     }
 
@@ -1266,24 +1378,36 @@ function parseCSVAndApply(csvText) {
       parsed.cashapp = parsed.cashapp || { kpis: {}, suspense: {}, items: [], appliedCashHistory: null };
       parsed.cashapp.items = rows.filter(r => r.ca_ref).map(r => ({
         ref: r.ca_ref,
-        amount: Number(r.ca_amount) || 0,
+        amount: n(r.ca_amount),
         date: r.ca_date || '',
-        days: Number(r.ca_days) || 0,
+        days: n(r.ca_days),
         client: r.ca_client || '',
         status: r.ca_status || ''
       }));
     }
 
     // Section 9: Comparativa Interanual (YoY Cash Applied History)
-    if (headers.includes('ca_history_month') && headers.includes('ca_history_curr') && headers.includes('ca_history_prev')) {
-      parsed.cashapp = parsed.cashapp || { kpis: {}, suspense: {}, items: [], appliedCashHistory: null };
-      parsed.cashapp.appliedCashHistory = {
-        currentYear: rows.map(r => Number(r.ca_history_curr) || 0),
-        prevYear:    rows.map(r => Number(r.ca_history_prev) || 0)
-      };
-      // Also update months if not already parsed from the DSO section
+    const yoyHeader = headers.find(h => h.includes('ca_history') || h === 'month');
+    if (yoyHeader) {
+      parsed.cashapp = parsed.cashapp || { kpis: {}, suspense: {}, items: [], appliedCashHistory: {} };
+      const historyObj = {};
+      
+      // Identify all year columns (exclude the month column)
+      const yearHeaders = headers.filter(h => h !== yoyHeader && h !== '');
+      
+      yearHeaders.forEach(yh => {
+        // Map common headers back to internal keys if needed, or just use the header name
+        let key = yh;
+        if (yh === 'ca_history_curr') key = 'currentYear';
+        if (yh === 'ca_history_prev') key = 'prevYear';
+        
+        historyObj[key] = rows.map(r => n(r[yh]));
+      });
+      
+      parsed.cashapp.appliedCashHistory = historyObj;
+      
       if (!parsed.months) {
-        parsed.months = rows.map(r => r.ca_history_month);
+        parsed.months = rows.map(r => r[yoyHeader]);
       }
     }
   };
@@ -1341,6 +1465,10 @@ function applyData(parsed) {
   }
   if (parsed.projection && parsed.projection.length > 0) {
     DATA.projection = parsed.projection;
+    // Destroy the projection chart and table so they rebuild with fresh data
+    if (charts.projection) { charts.projection.destroy(); delete charts.projection; }
+    const pt = document.getElementById('projectionTable');
+    if (pt) pt.innerHTML = '';
     changed++;
   }
   if (parsed.months && parsed.months.length > 0) {
@@ -1423,12 +1551,17 @@ function exportCSV() {
   csv += "\n";
 
   // 9. Comparativa Interanual de Efectivo Aplicado (Gráfica YoY)
-  // Columnas: mes | monto_2026 | monto_2025
   if (d.cashapp.appliedCashHistory) {
     const h = d.cashapp.appliedCashHistory;
-    csv += "ca_history_month,ca_history_curr,ca_history_prev\n";
+    const yearKeys = Object.keys(h);
+    
+    // Header
+    csv += "ca_history_month," + yearKeys.join(",") + "\n";
+    
+    // Rows
     d.months.forEach((m, i) => {
-      csv += `${m},${h.currentYear[i] || 0},${h.prevYear[i] || 0}\n`;
+      const vals = yearKeys.map(yk => h[yk][i] || 0);
+      csv += `${m},` + vals.join(",") + "\n";
     });
     csv += "\n";
   }
@@ -1671,7 +1804,36 @@ const esToEn = {
   "Acción recomendada: Automatizar recordatorios para que los clientes adjunten esta información en sus comprobantes de pago.": "Recommended action: Automate reminders for clients to attach this information to their payment receipts.",
   "Comparativa Interanual de Efectivo Aplicado": "Year-on-Year Applied Cash Comparison",
   "Año Actual (2026)": "Current Year (2026)",
-  "Año Anterior (2025)": "Previous Year (2025)"
+  "Año Anterior (2025)": "Previous Year (2025)",
+  "Análisis Interanual": "Year-on-Year Analysis",
+  "El efectivo aplicado acumulado en": "The accumulated applied cash in",
+  "superando los": "surpassing",
+  "por debajo de los": "below",
+  "un crecimiento de": "a growth of",
+  "un cambio de": "a change of",
+  "El mes con mayor mejora fue": "The month with the greatest improvement was",
+  "La tendencia está": "The trend is",
+  "acelerando": "accelerating",
+  "desacelerando": "decelerating",
+  "promedio reciente": "recent average",
+  "vs inicio": "vs start",
+  "Total Aplicado": "Total Applied",
+  "Mejor Mes": "Best Month",
+  "Alta Probabilidad": "High Probability",
+  "Media Probabilidad": "Medium Probability",
+  "Baja Probabilidad": "Low Probability",
+  "Crítico": "Critical",
+  "Alto": "High",
+  "Medio": "Medium",
+  "Estable": "Stable",
+  "Mejorando": "Improving",
+  "Deteriorando": "Deteriorating",
+  "No excedido": "Not exceeded",
+  "días": "days",
+  "Actual": "Actual",
+  "Anterior": "Previous",
+  "Ene": "Jan", "Feb": "Feb", "Mar": "Mar", "Abr": "Apr", "May": "May", "Jun": "Jun",
+  "Jul": "Jul", "Ago": "Aug", "Sep": "Sep", "Oct": "Oct", "Nov": "Nov", "Dic": "Dec"
 };
 
 const enToEs = Object.fromEntries(Object.entries(esToEn).map(([k,v]) => [v,k]));
@@ -1695,10 +1857,11 @@ function translateDOMNode(element, dict) {
     let text = node.nodeValue;
     if (text.trim() === '') continue;
     
-    // Quick early exit if no words match
     let changed = false;
     for (const key of keys) {
-      const regex = new RegExp(key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+      // Use word boundaries to avoid replacing substrings inside other words
+      const escaped = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const regex = new RegExp('(?<![a-zA-ZáéíóúñÁÉÍÓÚÑ])' + escaped + '(?![a-zA-ZáéíóúñÁÉÍÓÚÑ])', 'gi');
       if (regex.test(text)) {
         text = text.replace(regex, dict[key]);
         changed = true;
@@ -1731,7 +1894,7 @@ window.addEventListener('load', () => {
     const containersToWatch = ['riskTableBody', 'seg-strategic', 'seg-alert', 'seg-stable', 'seg-lowrisk', 'projectionTable', 'caTableBody', 'refundTableBody', 'ca-insights-list'];
     containersToWatch.forEach(id => {
         const el = document.getElementById(id);
-        if(el) observer.observe(el, { childList: true, subtree: true });
+        if(el) observer.observe(el, { childList: true, subtree: true, characterData: true });
     });
 });
 
@@ -1758,7 +1921,15 @@ function toggleLang() {
 
 function updateChartsLang() {
   const isEn = currentLang === 'en';
+  const dict = isEn ? esToEn : enToEs;
+  
+  const translateLabels = (chart) => {
+    if (!chart || !chart.data.labels) return;
+    chart.data.labels = chart.data.labels.map(l => dict[l] || l);
+  };
+
   if (charts.overviewAging) {
+    translateLabels(charts.overviewAging);
     charts.overviewAging.data.datasets[0].label = isEn ? 'Balance' : 'Saldo';
     charts.overviewAging.update();
   }
@@ -1767,11 +1938,13 @@ function updateChartsLang() {
     charts.riskDonut.update();
   }
   if (charts.dsoTrend) {
+    translateLabels(charts.dsoTrend);
     charts.dsoTrend.data.datasets[0].label = isEn ? 'Actual DSO' : 'DSO Real';
     charts.dsoTrend.data.datasets[1].label = isEn ? 'Target' : 'Objetivo';
     charts.dsoTrend.update();
   }
   if (charts.dsoComposition) {
+    translateLabels(charts.dsoComposition);
     charts.dsoComposition.data.datasets[0].label = isEn ? 'Credit Terms (Base)' : 'Términos de Crédito (Base)';
     charts.dsoComposition.data.datasets[1].label = isEn ? 'Collection Delay' : 'Retraso en Cobro';
     charts.dsoComposition.update();
@@ -1782,10 +1955,12 @@ function updateChartsLang() {
     charts.agingBar.update();
   }
   if (charts.agingStacked) {
+    translateLabels(charts.agingStacked);
     charts.agingStacked.data.datasets[0].label = isEn ? 'Current' : 'Corriente';
     charts.agingStacked.update();
   }
   if (charts.caMatch) {
+    translateLabels(charts.caMatch);
     charts.caMatch.data.datasets[0].label = isEn ? 'Automatic (%)' : 'Automático (%)';
     charts.caMatch.data.datasets[1].label = isEn ? 'Manual (%)' : 'Manual (%)';
     charts.caMatch.update();
@@ -1806,6 +1981,7 @@ function updateChartsLang() {
     charts.projection.update();
   }
   if (charts.caComparison) {
+    translateLabels(charts.caComparison);
     charts.caComparison.data.datasets[0].label = isEn ? 'Current Year (2026)' : 'Año Actual (2026)';
     charts.caComparison.data.datasets[1].label = isEn ? 'Previous Year (2025)' : 'Año Anterior (2025)';
     charts.caComparison.update();
