@@ -1,0 +1,669 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cuentas por Cobrar – Análisis Estratégico</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500;600;700;800&family=Outfit:wght@200;300;500;700;800&display=swap"
+        rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+    <div class="app">
+        <!-- SIDEBAR -->
+        <aside class="sidebar">
+            <div class="logo">
+                <div class="logo-badge">
+                    <svg width="22" height="16" viewBox="0 0 40 24" fill="none" xmlns="http://www.w3.org/2000/svg"
+                        class="logo-icon">
+                        <path d="M11 2 L2 12 L11 22 L14 19 L7 12 L14 5 Z" fill="currentColor" />
+                        <path d="M29 2 L38 12 L29 22 L26 19 L33 12 L26 5 Z" fill="currentColor" />
+                        <circle cx="20" cy="12" r="5" stroke="currentColor" stroke-width="3" fill="none" />
+                    </svg>
+                </div>
+                <span class="logo-text">Meltwater</span>
+            </div>
+            <nav class="nav">
+                <button class="nav-btn active" data-tab="overview" onclick="switchTab('overview',this)">
+                    <span class="nav-icon">⬡</span> Resumen
+                </button>
+                <button class="nav-btn" data-tab="dso" onclick="switchTab('dso',this)">
+                    <span class="nav-icon">◎</span> DSO
+                </button>
+                <button class="nav-btn" data-tab="aging" onclick="switchTab('aging',this)">
+                    <span class="nav-icon">▤</span> Aging Report
+                </button>
+                <button class="nav-btn" data-tab="risk" onclick="switchTab('risk',this)">
+                    <span class="nav-icon">⚠</span> Riesgo
+                </button>
+                <button class="nav-btn" data-tab="segmentation" onclick="switchTab('segmentation',this)">
+                    <span class="nav-icon">◈</span> Segmentación
+                </button>
+                <button class="nav-btn" data-tab="projection" onclick="switchTab('projection',this)">
+                    <span class="nav-icon">↗</span> Proyección
+                </button>
+                <button class="nav-btn" data-tab="cashapp" onclick="switchTab('cashapp',this)">
+                    <span class="nav-icon">⚡</span> Cash Apps
+                </button>
+            </nav>
+            <div class="sidebar-footer">
+                <div class="report-date">Mar 2026</div>
+                <button class="add-client-btn" onclick="openAddClientModal()">
+                    <span class="btn-icon">➕</span> Agregar Cliente
+                </button>
+                <button class="upload-real-btn" onclick="openUploadModal()">
+                    <span class="btn-icon">📂</span> Subir Datos Reales
+                </button>
+                <button class="export-data-btn" onclick="exportCSV()">
+                    <span class="btn-icon">⬇</span> Exportar CSV
+                </button>
+                <button class="refresh-btn"
+                    style="border-color: var(--red); color: var(--red); margin-top: 10px; opacity: 0.6;"
+                    onclick="resetData()">↺ Restablecer Datos</button>
+
+            </div>
+        </aside>
+
+        <!-- MAIN CONTENT -->
+        <main class="main">
+            <header class="topbar">
+                <div class="header-titles">
+                    <div class="super-title">OPERATIONS & ANALYTICS</div>
+                    <h1 class="main-title">AR <span class="text-gradient">Intelligence</span> Dashboard</h1>
+                    <p class="page-sub" id="page-title">Resumen Ejecutivo - Marzo 2026</p>
+                </div>
+
+                <div class="team-members-wrapper">
+                    <div class="team-title">CASH TEAM MEMBERS MEXICO</div>
+                    <div class="team-avatars">
+                        <div class="team-member" onclick="this.classList.toggle('expanded')">
+                            <div class="user-avatar team-avatar-large">
+                                <img src="angelica.png.png" alt="Angelica" class="profile-img-large">
+                            </div>
+                            <div class="team-member-info">
+                                <span class="team-member-name">Angelica Álvarez Ramírez</span>
+                                <span class="team-member-role">Accounts Receivable Specialist II</span>
+                                <span class="active-status">● Active Now</span>
+                            </div>
+                        </div>
+                        <div class="team-member" onclick="this.classList.toggle('expanded')">
+                            <div class="user-avatar team-avatar-large">
+                                <img src="andrea.png.png" alt="Andrea" class="profile-img-large">
+                            </div>
+                            <div class="team-member-info">
+                                <span class="team-member-name">Andrea Gutiérrez Llanos</span>
+                                <span class="team-member-role">Accounts Receivable Specialist II</span>
+                                <span class="active-status">● Active Now</span>
+                            </div>
+                        </div>
+                        <div class="team-member" onclick="this.classList.toggle('expanded')">
+                            <div class="user-avatar team-avatar-large">
+                                <img src="profile.png" alt="Ernesto" class="profile-img-large">
+                            </div>
+                            <div class="team-member-info">
+                                <span class="team-member-name">Ernesto Jaramillo</span>
+                                <span class="team-member-role">Team Lead</span>
+                                <span class="active-status">● Active Now</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="header-actions">
+                    <button id="langToggleBtn" class="lang-toggle-btn" onclick="toggleLang()">
+                        <span class="lang-icon">🌐</span> <span id="langText">ES</span>
+                    </button>
+                    <div class="health-badge" id="health-badge">● Cartera Saludable</div>
+
+                </div>
+            </header>
+
+            <!-- OVERVIEW TAB -->
+            <div id="tab-overview" class="tab-content active">
+                <div class="welcome-banner">
+                    <div class="welcome-text">
+                        <h1>Welcome back!</h1>
+                        <p>Your portfolio is currently showing a <span class="text-positive">3.2% increase</span> in
+                            collections compared to last month. Keep it up!</p>
+                    </div>
+                    <div class="welcome-stats">
+                        <div class="mini-stat">
+                            <span class="stat-label">AI Insights</span>
+                            <span class="stat-value">High Collections Prob.</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="kpi-grid">
+                    <div class="kpi-card accent-blue">
+                        <div class="kpi-label">Cartera Total</div>
+                        <div class="kpi-value" id="kpi-total">$4,287,350</div>
+                        <div class="kpi-delta positive">↑ 3.2% vs mes anterior</div>
+                    </div>
+                    <div class="kpi-card accent-purple">
+                        <div class="kpi-label">DSO Actual</div>
+                        <div class="kpi-value" id="kpi-dso">38.4 días</div>
+                        <div class="kpi-delta negative" id="kpi-dso-delta">↑ 2.1 días vs objetivo</div>
+                    </div>
+                    <div class="kpi-card accent-green">
+                        <div class="kpi-label">Recaudado MTD</div>
+                        <div class="kpi-value" id="kpi-collected">$1,923,100</div>
+                        <div class="kpi-delta positive">↑ 8.7% vs mes anterior</div>
+                    </div>
+                    <div class="kpi-card accent-orange">
+                        <div class="kpi-label">Clientes en Riesgo</div>
+                        <div class="kpi-value" id="kpi-risk">7</div>
+                        <div class="kpi-delta negative">↑ 2 nuevos esta semana</div>
+                    </div>
+                </div>
+                <div class="charts-row">
+                    <div class="chart-card wide">
+                        <div class="chart-header">
+                            <h3>Distribución de Cartera por Antigüedad</h3>
+                            <span class="chart-tag">Abril</span>
+                        </div>
+                        <canvas id="overviewAgingChart" height="150"></canvas>
+                    </div>
+                    <div class="chart-card">
+                        <div class="chart-header">
+                            <h3>Composición de Riesgo</h3>
+                        </div>
+                        <canvas id="riskDonutChart" height="150"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <div id="tab-dso" class="tab-content">
+                <div class="dso-grid">
+                    <div class="gauge-card">
+                        <div class="gauge-header">
+                            <h3>DSO Actual</h3>
+                            <span class="gauge-target-label">Objetivo: 36.3</span>
+                        </div>
+                        <canvas id="gaugeActual" width="160" height="110"></canvas>
+                        <div class="gauge-info">
+                            <div class="gauge-main">
+                                <span class="gauge-val" id="gaugeActualVal">38.4</span>
+                                <span class="gauge-label">dias</span>
+                            </div>
+                            <div class="gauge-status warning">⚠ Arriba del objetivo</div>
+                        </div>
+                    </div>
+                    <div class="gauge-card">
+                        <div class="gauge-header">
+                            <h3>DSO Mes Anterior</h3>
+                        </div>
+                        <canvas id="gaugePrev" width="160" height="110"></canvas>
+                        <div class="gauge-info">
+                            <div class="gauge-main">
+                                <span class="gauge-val" id="gaugePrevVal">36.1</span>
+                                <span class="gauge-label">dias</span>
+                            </div>
+                            <div class="gauge-status bad">↑ +2.3 Deterioro</div>
+                        </div>
+                    </div>
+                    <div class="gauge-card">
+                        <div class="gauge-header">
+                            <h3>Best Possible DSO</h3>
+                        </div>
+                        <canvas id="gaugeBest" width="160" height="110"></canvas>
+                        <div class="gauge-info">
+                            <div class="gauge-main">
+                                <span class="gauge-val" id="gaugeBestVal">24.0</span>
+                                <span class="gauge-label">dias</span>
+                            </div>
+                            <div class="gauge-status good">✓ Meta Saludable</div>
+                        </div>
+                    </div>
+                    <div class="gauge-card">
+                        <div class="gauge-header">
+                            <h3>Objetivo Anual</h3>
+                        </div>
+                        <canvas id="gaugeTarget" width="160" height="110"></canvas>
+                        <div class="gauge-info">
+                            <div class="gauge-main">
+                                <span class="gauge-val" id="gaugeTargetVal">36.3</span>
+                                <span class="gauge-label">dias</span>
+                            </div>
+                            <div class="gauge-status good">📌 Objetivo Fijo</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="charts-row">
+                    <div class="chart-card">
+                        <div class="chart-header">
+                            <h3>Tendencia DSO (6 Meses)</h3>
+                            <span class="chart-tag">Real vs Meta</span>
+                        </div>
+                        <canvas id="dsoTrendChart" height="180"></canvas>
+                    </div>
+                    <div class="chart-card">
+                        <div class="chart-header">
+                            <h3>Composición del DSO</h3>
+                            <span class="chart-tag">Base vs Retraso</span>
+                        </div>
+                        <canvas id="dsoCompositionChart" height="180"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- AGING TAB -->
+            <div id="tab-aging" class="tab-content">
+                <div class="kpi-grid mini">
+                    <div class="kpi-card accent-green sm">
+                        <div class="kpi-label">Corriente</div>
+                        <div class="kpi-value sm" id="aging-current">$1,842,000</div>
+                        <div class="kpi-pct" id="aging-current-pct">43%</div>
+                    </div>
+                    <div class="kpi-card accent-blue sm">
+                        <div class="kpi-label">1–30 días</div>
+                        <div class="kpi-value sm" id="aging-30">$987,500</div>
+                        <div class="kpi-pct" id="aging-30-pct">23%</div>
+                    </div>
+                    <div class="kpi-card accent-yellow sm">
+                        <div class="kpi-label">31–60 días</div>
+                        <div class="kpi-value sm" id="aging-60">$643,200</div>
+                        <div class="kpi-pct" id="aging-60-pct">15%</div>
+                    </div>
+                    <div class="kpi-card accent-orange sm">
+                        <div class="kpi-label">61–90 días</div>
+                        <div class="kpi-value sm" id="aging-90">$471,350</div>
+                        <div class="kpi-pct" id="aging-90-pct">11%</div>
+                    </div>
+                    <div class="kpi-card accent-red sm">
+                        <div class="kpi-label">+90 días</div>
+                        <div class="kpi-value sm" id="aging-90plus">$343,300</div>
+                        <div class="kpi-pct" id="aging-90plus-pct">8%</div>
+                    </div>
+                </div>
+                <div class="chart-card full-width">
+                    <div class="chart-header">
+                        <h3>Aging Report – Desglose por Antigüedad</h3><span class="chart-tag">$ Monto</span>
+                    </div>
+                    <canvas id="agingBarChart" height="140"></canvas>
+                </div>
+                <div class="chart-card full-width">
+                    <div class="chart-header">
+                        <h3>Aging por Cliente (Top 8)</h3>
+                    </div>
+                    <canvas id="agingStackedChart" height="160"></canvas>
+                </div>
+            </div>
+
+            <!-- RISK TAB -->
+            <div id="tab-risk" class="tab-content">
+                <div class="section-header">
+                    <h3>Clientes con Mayor Riesgo de Impago</h3>
+                    <p>Clasificados por score de riesgo compuesto (historial + límite excedido + tendencia 6M)</p>
+                </div>
+                <div class="risk-table-wrapper">
+                    <table class="risk-table" id="riskTable">
+                        <thead>
+                            <tr>
+                                <th>Cliente</th>
+                                <th>Saldo Vencido</th>
+                                <th>Días Vencido</th>
+                                <th>Límite Excedido</th>
+                                <th>Tendencia 6M</th>
+                                <th>Score Riesgo</th>
+                                <th>Clasificación</th>
+                            </tr>
+                        </thead>
+                        <tbody id="riskTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- SEGMENTATION TAB -->
+            <div id="tab-segmentation" class="tab-content">
+                <div class="section-header">
+                    <h3>Matriz de Segmentación de Cartera</h3>
+                    <p>Clasificación estratégica: Valor del Cliente vs. Riesgo de Cobro</p>
+                </div>
+                <div class="matrix-grid">
+                    <div class="matrix-quad strategic">
+                        <div class="quad-title">⭐ Clientes Estratégicos</div>
+                        <div class="quad-sub">Alto Valor · Bajo Riesgo</div>
+                        <div id="seg-strategic" class="quad-clients"></div>
+                    </div>
+                    <div class="matrix-quad alert">
+                        <div class="quad-title">⚠ Clientes en Alerta</div>
+                        <div class="quad-sub">Alto Valor · Alto Riesgo</div>
+                        <div id="seg-alert" class="quad-clients"></div>
+                    </div>
+                    <div class="matrix-quad stable">
+                        <div class="quad-title">✅ Clientes Estables</div>
+                        <div class="quad-sub">Bajo Valor · Bajo Riesgo</div>
+                        <div id="seg-stable" class="quad-clients"></div>
+                    </div>
+                    <div class="matrix-quad low-high">
+                        <div class="quad-title">🔴 Bajo Valor / Alto Riesgo</div>
+                        <div class="quad-sub">Bajo Valor · Alto Riesgo</div>
+                        <div id="seg-lowrisk" class="quad-clients"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PROJECTION TAB -->
+            <div id="tab-projection" class="tab-content">
+                <div class="kpi-grid">
+                    <div class="kpi-card accent-blue">
+                        <div class="kpi-label">Proyección 30 días</div>
+                        <div class="kpi-value" id="proj-total">$2,104,500</div>
+                        <div class="kpi-delta positive">↑ Confianza: 78%</div>
+                    </div>
+                    <div class="kpi-card accent-green">
+                        <div class="kpi-label">Recaudo Probable</div>
+                        <div class="kpi-value" id="proj-probable">$1,643,510</div>
+                        <div class="kpi-delta positive">Prob. alta ≥75%</div>
+                    </div>
+                    <div class="kpi-card accent-orange">
+                        <div class="kpi-label">Recaudo Posible</div>
+                        <div class="kpi-value" id="proj-possible">$460,990</div>
+                        <div class="kpi-delta neutral">Prob. media 40–74%</div>
+                    </div>
+                    <div class="kpi-card accent-red">
+                        <div class="kpi-label">En Riesgo</div>
+                        <div class="kpi-value" id="proj-risk">$182,840</div>
+                        <div class="kpi-delta negative">Prob. &lt;40%</div>
+                    </div>
+                </div>
+                <div class="chart-card full-width">
+                    <div class="chart-header">
+                        <h3>Proyección Semanal de Recaudos – Próximos 30 Días</h3>
+                    </div>
+                    <canvas id="projectionChart" height="160"></canvas>
+                </div>
+                <div class="chart-card full-width">
+                    <div class="chart-header">
+                        <h3>Calendario de Vencimientos por Cliente</h3>
+                    </div>
+                    <div id="projectionTable" class="proj-table-cont"></div>
+                </div>
+            </div>
+
+            <!-- CASH APPLICATIONS TAB -->
+            <div id="tab-cashapp" class="tab-content">
+                <div class="kpi-grid">
+                    <div class="kpi-card accent-purple clickable" id="ca-card-unapplied"
+                        onclick="filterCashApp('unapplied')">
+                        <div class="kpi-label">Unapplied Cash</div>
+                        <div class="kpi-value" id="ca-unapplied">$-</div>
+                        <div class="kpi-delta neutral">Pendiente de aplicar</div>
+                    </div>
+                    <div class="kpi-card accent-orange clickable" id="ca-card-suspense"
+                        onclick="filterCashApp('suspense')">
+                        <div class="kpi-label">Suspense Account</div>
+                        <div class="kpi-value" id="ca-suspense">$-</div>
+                        <div class="kpi-delta negative">Partidas sin identificar</div>
+                    </div>
+                    <div class="kpi-card accent-green sm">
+                        <div class="kpi-label">Auto-Match Rate</div>
+                        <div class="kpi-value" id="ca-automatch">-%</div>
+                        <div class="kpi-delta positive">Eficiencia del sistema</div>
+                    </div>
+                    <div class="kpi-card accent-red sm">
+                        <div class="kpi-label">Pending Refunds</div>
+                        <div class="kpi-value" id="ca-refunds">$-</div>
+                        <div class="kpi-delta negative">Por procesar</div>
+                    </div>
+                </div>
+
+                <!-- ALGORITHMIC INSIGHTS -->
+                <div class="insights-box"
+                    style="background: rgba(85, 110, 230, 0.1); border-left: 4px solid var(--blue); padding: 16px; border-radius: 8px; margin-bottom: 20px;">
+                    <h3
+                        style="color: var(--blue); margin-top:0; margin-bottom: 8px; font-size: 14px; display: flex; align-items: center;">
+                        <span style="margin-right: 6px;">💡</span> Análisis Inteligente de Cash Applications
+                    </h3>
+                    <ul id="ca-insights-list"
+                        style="margin: 0; padding-left: 20px; color: var(--text); font-size: 13px; line-height: 1.6;">
+                        <li>Calculando insights...</li>
+                    </ul>
+                </div>
+
+                <div class="charts-row" style="grid-template-columns: 1fr;">
+                    <div class="chart-card" style="padding: 20px 24px 24px; max-height: none; height: auto;">
+                        <div class="chart-header" style="margin-bottom: 4px;">
+                            <h3>Comparativa Interanual de Efectivo Aplicado</h3>
+                            <span class="chart-tag">2026 vs 2025</span>
+                        </div>
+
+                        <!-- KPI Summary Pills -->
+                        <div id="caCompKpis"
+                            style="display:flex; gap:12px; flex-wrap:wrap; margin-bottom:14px; margin-top:6px;">
+                            <div class="comp-kpi-pill">
+                                <span class="comp-kpi-label">Total Aplicado 2026 YTD</span>
+                                <span class="comp-kpi-val" id="compTotal2026" style="color:#3b82f6;">—</span>
+                            </div>
+                            <div class="comp-kpi-pill">
+                                <span class="comp-kpi-label">Total Aplicado 2025 YTD</span>
+                                <span class="comp-kpi-val" id="compTotal2025"
+                                    style="color:rgba(255,255,255,0.4);">—</span>
+                            </div>
+                            <div class="comp-kpi-pill">
+                                <span class="comp-kpi-label">Crecimiento YoY</span>
+                                <span class="comp-kpi-val" id="compGrowth" style="color:#10b981;">—</span>
+                            </div>
+                            <div class="comp-kpi-pill">
+                                <span class="comp-kpi-label">Mejor Mes (2026)</span>
+                                <span class="comp-kpi-val" id="compBestMonth" style="color:#f59e0b;">—</span>
+                            </div>
+                        </div>
+
+                        <div class="comp-chart-wrap">
+                            <canvas id="caComparisonChart"></canvas>
+                        </div>
+
+                        <!-- Month-by-month delta badges -->
+                        <div id="caCompDeltaRow"
+                            style="display:flex; gap:6px; flex-wrap:wrap; margin-top:14px; justify-content:center;">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="charts-row">
+                    <div class="chart-card">
+                        <div class="chart-header">
+                            <h3>Aplicación Automática vs Manual</h3>
+                            <span class="chart-tag">Últimos 6 Meses</span>
+                        </div>
+                        <canvas id="caMatchChart" height="220"></canvas>
+                    </div>
+                    <div class="chart-card">
+                        <div class="chart-header">
+                            <h3>Tendencia de Refunds</h3>
+                            <span class="chart-tag">Últimos 6 Meses</span>
+                        </div>
+                        <canvas id="caRefundTrendChart" height="220"></canvas>
+                    </div>
+                </div>
+
+                <div class="charts-row">
+                    <div class="chart-card">
+                        <div class="chart-header">
+                            <h3>Antigüedad de Unapplied Cash</h3>
+                        </div>
+                        <canvas id="caAgingChart" height="200"></canvas>
+                    </div>
+                    <div class="chart-card">
+                        <div class="chart-header">
+                            <h3>Composición de Partidas Sin Identificar (Suspense)</h3>
+                            <span class="chart-tag">% por Origen</span>
+                        </div>
+                        <canvas id="caSuspenseChart" height="200"></canvas>
+                    </div>
+                </div>
+
+                <!-- NOVEDAD: Nueva Tabla de Partidas -->
+                <div class="section-header" style="margin-top: 24px;">
+                    <h3 id="ca-table-title">Top Partidas Pendientes de Aplicar</h3>
+                    <p>Detalle de depósitos recibidos que no han podido ser conciliados contra facturas.</p>
+                </div>
+                <div class="risk-table-wrapper" style="margin-bottom: 24px;">
+                    <table class="risk-table" id="caTable">
+                        <thead>
+                            <tr>
+                                <th>Referencia / Banco</th>
+                                <th>Monto</th>
+                                <th>Fecha de Depósito</th>
+                                <th>Días sin aplicar</th>
+                                <th>Posible Origen</th>
+                                <th>Estatus</th>
+                            </tr>
+                        </thead>
+                        <tbody id="caTableBody"></tbody>
+                    </table>
+                </div>
+
+                <!-- ANALISIS DE REFUNDS -->
+                <div class="section-header">
+                    <h3>Análisis de Refunds</h3>
+                    <p>Detalle de las solicitudes de devolución pendientes de validación y pago.</p>
+                </div>
+                <div class="risk-table-wrapper">
+                    <table class="risk-table" id="refundTable">
+                        <thead>
+                            <tr>
+                                <th>Cliente</th>
+                                <th>Monto Refund</th>
+                                <th>Motivo</th>
+                                <th>Fecha Solicitud</th>
+                                <th>Estatus</th>
+                            </tr>
+                        </thead>
+                        <tbody id="refundTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- UPLOAD MODAL -->
+    <div id="uploadModal" class="modal-overlay" onclick="handleOverlayClick(event)">
+        <div class="modal-box">
+            <div class="modal-header">
+                <div>
+                    <h2 class="modal-title">📂 Subir Datos Reales</h2>
+                    <p class="modal-sub">CSV o JSON · El dashboard se actualizará automáticamente</p>
+                </div>
+                <button class="modal-close" onclick="closeUploadModal()">✕</button>
+            </div>
+
+            <!-- DROP ZONE -->
+            <div class="drop-zone" id="dropZone" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)"
+                ondrop="handleDrop(event)" onclick="document.getElementById('fileInput').click()">
+                <div class="drop-icon">📄</div>
+                <p class="drop-text">Arrastra tu archivo aquí</p>
+                <p class="drop-sub">o haz <strong>clic</strong> para seleccionar</p>
+                <p class="drop-types">Formatos soportados: <strong>.csv</strong> · <strong>.json</strong></p>
+                <input type="file" id="fileInput" accept=".csv,.json" style="display:none"
+                    onchange="handleFileSelect(event)">
+            </div>
+
+            <!-- FORMAT GUIDE -->
+            <div class="format-tabs">
+                <button class="fmt-tab active" id="fmtTabCSV" onclick="showFmtTab('csv')">📋 Formato CSV</button>
+                <button class="fmt-tab" id="fmtTabJSON" onclick="showFmtTab('json')">{ } Formato JSON</button>
+            </div>
+            <div class="format-panel" id="fmtPanelCSV">
+                <pre class="code-preview">dso_actual,dso_prev,dso_best,dso_target,total_ar,collected
+38.4,36.1,24.0,36.3,4287350,1923100
+
+# Clientes (hoja separada o archivo separado)
+name,balance,overdue,limitExc,trend,score,seg
+Constructora Alfa,487200,91,34,up,91,alert
+Megasuper Retail,743000,12,0,down,18,strategic</pre>
+            </div>
+            <div class="format-panel" id="fmtPanelJSON" style="display:none">
+                <pre class="code-preview">{"dso":{"actual":38.4,"prev":36.1,"best":24.0,"target":36.3},
+"totalAR":4287350,"collected":1923100,
+"aging":{"current":1842000,"d30":987500,"d60":643200,"d90":471350,"d90p":343300},
+"clients":[
+  {"name":"Constructora Alfa","balance":487200,"overdue":91,
+   "limitExc":34,"trend":"up","score":91,"seg":"alert"}
+]}</pre>
+            </div>
+
+            <!-- STATUS -->
+            <div class="upload-status" id="uploadStatus" style="display:none"></div>
+
+            <div class="modal-actions">
+                <button class="btn-cancel" onclick="closeUploadModal()">Cancelar</button>
+                <button class="btn-load" id="btnLoad" onclick="document.getElementById('fileInput').click()" disabled>⬆
+                    Cargar Archivo</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ADD CLIENT MODAL -->
+    <div id="addClientModal" class="modal-overlay" onclick="handleAddClientOverlayClick(event)">
+        <div class="modal-box">
+            <div class="modal-header">
+                <div>
+                    <h2 class="modal-title">➕ Agregar Nuevo Cliente</h2>
+                    <p class="modal-sub">Ingresa los datos del cliente para añadirlo al panel</p>
+                </div>
+                <button class="modal-close" type="button" onclick="closeAddClientModal()">✕</button>
+            </div>
+
+            <form id="addClientForm" onsubmit="handleAddClientSubmit(event)" class="form-grid">
+                <div class="form-group">
+                    <label>Nombre del Cliente</label>
+                    <input type="text" id="acName" required placeholder="Ej: Industrias XYZ">
+                </div>
+                <div class="form-group">
+                    <label>Saldo Total ($)</label>
+                    <input type="number" id="acBalance" required min="0" placeholder="0">
+                </div>
+                <div class="form-group">
+                    <label>Días Vencido</label>
+                    <input type="number" id="acOverdue" required min="0" placeholder="0">
+                </div>
+                <div class="form-group">
+                    <label>Límite Excedido (%)</label>
+                    <input type="number" id="acLimitExc" value="0" min="0">
+                </div>
+                <div class="form-group">
+                    <label>Tendencia</label>
+                    <select id="acTrend">
+                        <option value="stable">Estable</option>
+                        <option value="up">Deteriorando</option>
+                        <option value="down">Mejorando</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Score Riesgo (0-100)</label>
+                    <input type="number" id="acScore" required min="0" max="100" placeholder="50">
+                </div>
+                <div class="form-group" style="grid-column: span 2;">
+                    <label>Segmentación</label>
+                    <select id="acSeg">
+                        <option value="strategic">Estratégico (Alto Valor / Bajo Riesgo)</option>
+                        <option value="alert">Alerta (Alto Valor / Alto Riesgo)</option>
+                        <option value="stable">Estable (Bajo Valor / Bajo Riesgo)</option>
+                        <option value="lowrisk">Bajo Valor / Alto Riesgo</option>
+                    </select>
+                </div>
+
+                <div class="modal-actions" style="grid-column: span 2; margin-top: 10px;">
+                    <button type="button" class="btn-cancel" onclick="closeAddClientModal()">Cancelar</button>
+                    <button type="submit" class="btn-load" style="opacity: 1;">✔ Añadir Cliente</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- TOAST -->
+    <div class="toast" id="toast"></div>
+
+    <script src="data.js"></script>
+    <script src="script.js"></script>
+</body>
+
+</html>
