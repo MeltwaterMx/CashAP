@@ -160,7 +160,7 @@ function chartDefaults() {
   Chart.defaults.color = COLORS.text2;
   Chart.defaults.borderColor = 'rgba(255, 255, 255, 0.03)';
   Chart.defaults.font.family = 'Inter';
-  Chart.defaults.font.size = 11;
+  Chart.defaults.font.size = 16;
   Chart.defaults.scale.grid.color = 'rgba(255, 255, 255, 0.02)';
   Chart.defaults.scale.grid.drawBorder = false;
 
@@ -650,7 +650,7 @@ function buildRefundComparisonChart() {
       const badge = document.createElement('div');
       badge.className = `comp-delta-badge ${cls}`;
       badge.style.minWidth = '80px';
-      badge.innerHTML = `<span class="delta-month" style="font-size:8px;">${rollingLabels[i]}</span><span style="font-size:12px;">${sign}${pctVal}%</span>`;
+      badge.innerHTML = `<span class="delta-month" style="font-size:12px;">${rollingLabels[i]}</span><span style="font-size:16px;">${sign}${pctVal}%</span>`;
       deltaRow.appendChild(badge);
     });
   }
@@ -808,7 +808,7 @@ function buildRefunds() {
         options: {
           responsive: true, maintainAspectRatio: false, cutout: '80%',
           plugins: { 
-            legend: { position: 'right', labels: { color: COLORS.text2, font: { size: 11, family: 'Inter' }, usePointStyle: true, pointStyle: 'circle', boxWidth: 8 } },
+            legend: { position: 'right', labels: { color: COLORS.text2, font: { size: 16, family: 'Inter' }, usePointStyle: true, pointStyle: 'circle', boxWidth: 12 } },
             tooltip: {
               callbacks: {
                 label: function(context) {
@@ -848,7 +848,7 @@ function buildRefunds() {
         options: {
           responsive: true, maintainAspectRatio: false, cutout: '80%',
           plugins: { 
-            legend: { position: 'right', labels: { color: COLORS.text2, font: { size: 11, family: 'Inter' }, usePointStyle: true, pointStyle: 'circle', boxWidth: 8 } },
+            legend: { position: 'right', labels: { color: COLORS.text2, font: { size: 16, family: 'Inter' }, usePointStyle: true, pointStyle: 'circle', boxWidth: 12 } },
             tooltip: {
               callbacks: {
                 label: function(context) {
@@ -879,13 +879,13 @@ function buildRefunds() {
       const pct = total > 0 ? ((val / total) * 100).toFixed(1) : 0;
       const col = [COLORS.blue, COLORS.purple, COLORS.green, COLORS.yellow, COLORS.orange][i % 5];
       const item = document.createElement('div');
-      item.style.cssText = `display: flex; justify-content: space-between; align-items: center; font-size: 13px; color: var(--text); padding: 4px 8px; background: rgba(255,255,255,0.02); border-radius: 6px;`;
+      item.style.cssText = `display: flex; justify-content: space-between; align-items: center; font-size: 17px; color: var(--text); padding: 8px 12px; background: rgba(255,255,255,0.02); border-radius: 6px;`;
       item.innerHTML = `
-        <div style="display: flex; align-items: center; gap: 8px;">
-          <div style="width: 6px; height: 6px; border-radius: 50%; background: ${col};"></div>
-          <span style="color: var(--text2); font-size: 11px;">${label}</span>
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <div style="width: 10px; height: 10px; border-radius: 50%; background: ${col};"></div>
+          <span style="color: var(--text2); font-size: 16px;">${label}</span>
         </div>
-        <div style="font-weight: 600;">${Math.round(val).toLocaleString('en-US')} <span style="font-size: 10px; color: var(--text2);">${subCur[label] || 'USD'}</span> <span style="color: var(--text2); font-weight: 400; font-size: 11px;">(${pct}%)</span></div>
+        <div style="font-weight: 600;">${Math.round(val).toLocaleString('en-US')} <span style="font-size: 14px; color: var(--text2);">${subCur[label] || 'USD'}</span> <span style="color: var(--text2); font-weight: 400; font-size: 14px;">(${pct}%)</span></div>
       `;
       subDetail.appendChild(item);
     });
@@ -900,13 +900,13 @@ function buildRefunds() {
       const pct = total > 0 ? ((val / total) * 100).toFixed(1) : 0;
       const col = [COLORS.red, COLORS.yellow, COLORS.green][i % 3];
       const item = document.createElement('div');
-      item.style.cssText = `display: flex; justify-content: space-between; align-items: center; font-size: 13px; color: var(--text); padding: 4px 8px; background: rgba(255,255,255,0.02); border-radius: 6px;`;
+      item.style.cssText = `display: flex; justify-content: space-between; align-items: center; font-size: 17px; color: var(--text); padding: 8px 12px; background: rgba(255,255,255,0.02); border-radius: 6px;`;
       item.innerHTML = `
-        <div style="display: flex; align-items: center; gap: 8px;">
-          <div style="width: 6px; height: 6px; border-radius: 50%; background: ${col};"></div>
-          <span style="color: var(--text2); font-size: 11px;">${label}</span>
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <div style="width: 10px; height: 10px; border-radius: 50%; background: ${col};"></div>
+          <span style="color: var(--text2); font-size: 16px;">${label}</span>
         </div>
-        <div style="font-weight: 600;">${val.toLocaleString('en-US')} <span style="color: var(--text2); font-weight: 400; font-size: 11px;">solicitudes</span></div>
+        <div style="font-weight: 600;">${val.toLocaleString('en-US')} <span style="color: var(--text2); font-weight: 400; font-size: 14px;">solicitudes</span></div>
       `;
       statusDetail.appendChild(item);
     });
@@ -1210,10 +1210,10 @@ function buildCashApp() {
       },
       options: {
         responsive: true, maintainAspectRatio: false,
-        plugins: { legend: { display: true, position: 'top', labels: { boxWidth: 10, font: { size: 10 } } } },
+        plugins: { legend: { display: true, position: 'top', labels: { boxWidth: 14, font: { size: 16 } } } },
         scales: {
-          x: { stacked: true, grid: { display: false }, ticks: { font: { size: 10 } } },
-          y: { stacked: true, max: 100, grid: { color: '#232840' }, ticks: { font: { size: 10 } } }
+          x: { stacked: true, grid: { display: false }, ticks: { font: { size: 14 } } },
+          y: { stacked: true, max: 100, grid: { color: '#232840' }, ticks: { font: { size: 14 } } }
         }
       }
     });
@@ -1262,7 +1262,7 @@ function buildCashApp() {
       options: {
         responsive: true, maintainAspectRatio: false, cutout: '65%',
         plugins: {
-          legend: { display: true, position: 'right', labels: { boxWidth: 10, font: { size: 10 } } },
+          legend: { display: true, position: 'right', labels: { boxWidth: 14, font: { size: 16 } } },
           tooltip: { enabled: true, callbacks: { label: (ctx) => ' ' + fmt(ctx.raw) } }
         }
       }
@@ -1290,7 +1290,7 @@ function buildCashApp() {
       options: {
         responsive: true, maintainAspectRatio: false,
         plugins: {
-          legend: { display: true, position: 'right', labels: { boxWidth: 10, font: { size: 10 } } },
+          legend: { display: true, position: 'right', labels: { boxWidth: 14, font: { size: 16 } } },
           tooltip: { enabled: true }
         }
       }
@@ -1486,7 +1486,7 @@ function buildCashComparison() {
             position: 'top',
             labels: { 
               color: COLORS.text, 
-              font: { size: 11 },
+              font: { size: 16 },
               padding: 20,
               usePointStyle: false,
               boxWidth: 30
@@ -1511,8 +1511,8 @@ function buildCashComparison() {
           }
         },
         scales: {
-          x: { grid: { display: false }, ticks: { color: COLORS.text2, font: { size: 11 }, padding: 6 } },
-          y: { grid: { color: 'rgba(255,255,255,0.04)', borderDash: [4, 4] }, ticks: { color: COLORS.text2, font: { size: 11 }, padding: 8, callback: v => '$' + (v / 1000000).toFixed(1) + 'M' }, border: { display: false } }
+          x: { grid: { display: false }, ticks: { color: COLORS.text2, font: { size: 15 }, padding: 6 } },
+          y: { grid: { color: 'rgba(255,255,255,0.04)', borderDash: [4, 4] }, ticks: { color: COLORS.text2, font: { size: 15 }, padding: 8, callback: v => '$' + (v / 1000000).toFixed(1) + 'M' }, border: { display: false } }
         }
       }
     });
@@ -1560,7 +1560,7 @@ function buildRiskTable() {
       <td>
         <div class="score-bar-wrap">
           <div class="score-bar"><div class="score-fill" style="width:${c.score}%;background:${barColor}"></div></div>
-          <span style="font-size:12px;font-weight:700;color:${barColor}">${c.score}</span>
+          <span style="font-size:16px;font-weight:700;color:${barColor}">${c.score}</span>
         </div>
       </td>
       <td><span class="risk-badge ${cls}">${lbl}</span></td>`;
@@ -1644,10 +1644,10 @@ function buildProjectionChart() {
     options: {
       responsive: true, maintainAspectRatio: false,
       layout: { padding: 10 },
-      plugins: { legend: { display: true, position: 'top', labels: { boxWidth: 10, font: { size: 10 } } } },
+      plugins: { legend: { display: true, position: 'top', labels: { boxWidth: 14, font: { size: 16 } } } },
       scales: { 
-        x: { stacked: true, grid: { display: false }, ticks: { font: { size: 10 } } }, 
-        y: { stacked: true, grid: { color: '#232840' }, ticks: { font: { size: 10 }, callback: v => '$' + (v / 1000).toFixed(0) + 'K' } } 
+        x: { stacked: true, grid: { display: false }, ticks: { font: { size: 14 } } }, 
+        y: { stacked: true, grid: { color: '#232840' }, ticks: { font: { size: 14 }, callback: v => '$' + (v / 1000).toFixed(0) + 'K' } } 
       }
     }
   });
@@ -2406,6 +2406,7 @@ const esToEn = {
   "del volumen total de reembolsos. Se recomienda revisar si existen cuellos de botella específicos en los procesos de validación de esta entidad.": "of the total refund volume. It is recommended to check for specific bottlenecks in the validation processes of this entity.",
   "de las solicitudes están en estado": "of requests are in",
   "Pendiente. Un porcentaje alto sugiere una carga de trabajo excedida o falta de documentación inicial por parte del solicitante.": "Pending. A high percentage suggests an overloaded workload or lack of initial documentation from the requester.",
+  "sugiere una carga de trabajo excedida o falta de documentación inicial por parte del solicitante.": "suggests an overloaded workload or lack of initial documentation from the requester.",
   "Flujo de Validación Saludable:": "Healthy Validation Flow:",
   "El nivel de solicitudes pendientes es bajo": "The level of pending requests is low",
   "La mayoría de los reembolsos están en etapas avanzadas de validación o ya completados.": "Most refunds are in advanced stages of validation or already completed.",
@@ -2414,7 +2415,27 @@ const esToEn = {
   "Acción recomendada: Priorizar los casos que superan los 10 días para evitar reclamos de clientes.": "Recommended action: Prioritize cases exceeding 10 days to avoid client claims.",
   "Consolidado Histórico (Ventana de 6 Meses)": "Historical Consolidated (6-Month Window)",
   "Total": "Total",
-  "USD Eq.": "USD Eq."
+  "USD Eq.": "USD Eq.",
+  "El": "The",
+  "La": "The",
+  "Un": "A",
+  "un": "a",
+  "especialmente": "especially",
+  "porcentaje": "percentage",
+  "solicitudes": "requests",
+  "reembolsos": "refunds",
+  "Partidas Pendientes": "Pending Items",
+  "Evolución de Reembolsos por Moneda": "Refunds Evolution by Currency",
+  "Análisis de tendencias · Últimos 6 meses móviles": "Trend analysis · Last 6 rolling months",
+  "CONSOLIDADO HISTÓRICO (VENTANA DE 6 MESES)": "HISTORICAL CONSOLIDATED (6-MONTH WINDOW)",
+  "Distribución y Segmentación": "Distribution & Segmentation",
+  "Análisis por subsidiaria y estado de validación.": "Analysis by subsidiary and validation status.",
+  "Por Subsidiaria": "By Subsidiary",
+  "Por Estatus": "By Status",
+  "Gestión de Solicitudes Individuales": "Individual Requests Management",
+  "Detalle de las partidas pendientes de validación y pago.": "Details of pending items for validation and payment.",
+  "ENE": "JAN", "FEB": "FEB", "MAR": "MAR", "ABR": "APR", "MAY": "MAY", "JUN": "JUN",
+  "JUL": "JUL", "AGO": "AUG", "SEP": "SEP", "OCT": "OCT", "NOV": "NOV", "DIC": "DEC"
 };
 
 const enToEs = Object.fromEntries(Object.entries(esToEn).map(([k,v]) => [v,k]));
@@ -2472,7 +2493,11 @@ const observer = new MutationObserver((mutations) => {
 
 // Attach observer to containers
 window.addEventListener('load', () => {
-    const containersToWatch = ['riskTableBody', 'seg-strategic', 'seg-alert', 'seg-stable', 'seg-lowrisk', 'projectionTable', 'caTableBody', 'refundTableBody', 'ca-insights-list', 'ref-insights-list', 'refChartDetails'];
+    const containersToWatch = [
+        'riskTableBody', 'seg-strategic', 'seg-alert', 'seg-stable', 'seg-lowrisk', 
+        'projectionTable', 'caTableBody', 'refundTableBody', 'ca-insights-list', 
+        'ref-insights-list', 'refChartDetails', 'refCompDeltaRow', 'caCompDeltaRow'
+    ];
     containersToWatch.forEach(id => {
         const el = document.getElementById(id);
         if(el) observer.observe(el, { childList: true, subtree: true, characterData: true });
