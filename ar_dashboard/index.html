@@ -51,6 +51,9 @@
                 <button class="nav-btn" data-tab="cashapp" onclick="switchTab('cashapp',this)">
                     <span class="nav-icon">⚡</span> Cash Apps
                 </button>
+                <button class="nav-btn" data-tab="refunds" onclick="switchTab('refunds',this)">
+                    <span class="nav-icon">💸</span> Refunds
+                </button>
             </nav>
             <div class="sidebar-footer">
                 <div class="report-date">Mar 2026</div>
@@ -521,6 +524,87 @@
                     </table>
                 </div>
 
+            </div>
+
+            <!-- REFUNDS TAB -->
+            <div id="tab-refunds" class="tab-content">
+                <div class="kpi-grid" style="grid-template-columns: repeat(3, 1fr); gap: 20px;">
+                    <div class="kpi-card accent-purple">
+                        <div class="kpi-content">
+                            <div class="kpi-title">Total Refunds Pendientes</div>
+                            <div class="kpi-value" id="refTotalAmt">$0</div>
+                        </div>
+                        <div class="kpi-icon-bg">💸</div>
+                    </div>
+                    <div class="kpi-card accent-blue">
+                        <div class="kpi-content">
+                            <div class="kpi-title">Solicitudes Abiertas</div>
+                            <div class="kpi-value" id="refTotalCount">0</div>
+                        </div>
+                        <div class="kpi-icon-bg">📋</div>
+                    </div>
+                    <div class="kpi-card accent-orange">
+                        <div class="kpi-content">
+                            <div class="kpi-title">Mayor Antigüedad (Días)</div>
+                            <div class="kpi-value" id="refMaxAge">0</div>
+                        </div>
+                        <div class="kpi-icon-bg">⏳</div>
+                    </div>
+                </div>
+
+                <!-- NEW: Interannual Comparison for Refunds -->
+                <div class="charts-row" style="grid-template-columns: 1fr; margin-bottom: 24px;">
+                    <div class="chart-card" style="padding: 20px 24px 24px; max-height: none; height: auto;">
+                        <div class="chart-header" style="margin-bottom: 4px;">
+                            <h3>Análisis de Reembolsos por Moneda (Rolling 6M)</h3>
+                            <span class="chart-tag" id="refChartTag">Evolución Mensual</span>
+                        </div>
+
+                        <!-- KPI Summary Pills -->
+                        <div id="refCompKpis" style="display:flex; gap:12px; flex-wrap:wrap; margin-bottom:14px; margin-top:6px;">
+                            <div class="comp-kpi-pill">
+                                <span class="comp-kpi-label">Total Reembolsos YTD</span>
+                                <span class="comp-kpi-val" id="refCompTotalActual" style="color:#8b5cf6;">—</span>
+                            </div>
+                            <div class="comp-kpi-pill">
+                                <span class="comp-kpi-label">Prev. Year (Same Period)</span>
+                                <span class="comp-kpi-val" id="refCompTotalPrev" style="color:rgba(255,255,255,0.4);">—</span>
+                            </div>
+                            <div class="comp-kpi-pill">
+                                <span class="comp-kpi-label">Crecimiento LfL</span>
+                                <span class="comp-kpi-val" id="refCompGrowth" style="color:#10b981;">—</span>
+                            </div>
+                            <div class="comp-kpi-pill">
+                                <span class="comp-kpi-label">Mejor Mes (2026)</span>
+                                <span class="comp-kpi-val" id="refCompBestMonth" style="color:#f59e0b;">—</span>
+                            </div>
+                        </div>
+
+                        <div class="comp-chart-wrap" style="position: relative; height:350px;">
+                            <canvas id="refComparisonChart"></canvas>
+                        </div>
+
+                        <!-- Month-by-month delta badges -->
+                        <div id="refCompDeltaRow" style="display:flex; gap:6px; flex-wrap:wrap; margin-top:14px; justify-content:center;">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="charts-row" style="grid-template-columns: 1fr 1fr;">
+                    <div class="chart-card" style="max-height: none; height: auto;">
+                        <h3 class="chart-title">Por Subsidiaria</h3>
+                        <div class="chart-container" style="position: relative; height:250px; width: 100%;">
+                            <canvas id="refSubsidiaryChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="chart-card" style="max-height: none; height: auto;">
+                        <h3 class="chart-title">Por Estatus</h3>
+                        <div class="chart-container" style="position: relative; height:250px; width: 100%;">
+                            <canvas id="refStatusChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- ANALISIS DE REFUNDS -->
                 <div class="section-header">
                     <h3>Análisis de Refunds</h3>
@@ -530,11 +614,16 @@
                     <table class="risk-table" id="refundTable">
                         <thead>
                             <tr>
-                                <th>Cliente</th>
-                                <th>Monto Refund</th>
-                                <th>Motivo</th>
-                                <th>Fecha Solicitud</th>
+                                <th>RFT - number</th>
+                                <th>Created</th>
+                                <th>Subsidiary</th>
+                                <th>Amount</th>
+                                <th>Currency</th>
+                                <th>Age</th>
+                                <th>Responsable</th>
+                                <th>Link</th>
                                 <th>Estatus</th>
+                                <th>Acciones</th>
                             </tr>
                         </thead>
                         <tbody id="refundTableBody"></tbody>
@@ -662,8 +751,8 @@ Megasuper Retail,743000,12,0,down,18,strategic</pre>
     <!-- TOAST -->
     <div class="toast" id="toast"></div>
 
-    <script src="data.js"></script>
-    <script src="script.js"></script>
+    <script src="data.js?v=2"></script>
+    <script src="script.js?v=2"></script>
 </body>
 
 </html>

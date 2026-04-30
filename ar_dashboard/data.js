@@ -83,10 +83,18 @@ const DASHBOARD_DATA = {
         refunds: {
             total: 125400,
             history: [12000, 15000, 11000, 18000, 14000, 16000],
+            // Simulated historical data for interannual comparison
+            interannualHistory: {
+                currentYear: [85000, 92000, 78000, 110000, 95000, 120000],
+                prevYear: [65000, 72000, 58000, 80000, 75000, 90000],
+                year2024: [55000, 62000, 48000, 70000, 65000, 80000],
+                year2023: [45000, 52000, 38000, 60000, 55000, 70000]
+            },
             items: [
-                { client: 'Globant S.A.', amount: 12500, reason: 'Doble Pago', date: '01 Mar 2026', status: 'Pendiente' },
-                { client: 'Mercado Libre', amount: 4500, reason: 'Error en Factura', date: '02 Mar 2026', status: 'Validando' },
-                { client: 'Distribuidora Beta', amount: 8900, reason: 'Nota de Crédito', date: '03 Mar 2026', status: 'Pendiente' }
+                { rftNumber: 'RFT - 94', created: '05-mar-26', subsidiary: '311 - Germany', amount: 32188.71, currency: 'EUR', age: 55, responsable: 'Andrea', link: 'https://meltwater.atlassian.net/browse/RFT-94', status: 'Pendiente' },
+                { rftNumber: 'RFT - 110', created: '31-mar-26', subsidiary: '102 - US', amount: 19800.00, currency: 'USD', age: 29, responsable: 'Andrea', link: 'https://meltwater.atlassian.net/browse/RFT-110', status: 'Validando' },
+                { rftNumber: 'RFT - 129', created: '28-abr-26', subsidiary: '421 - Finland', amount: 8332.80, currency: 'EUR', age: 1, responsable: 'Andrea', link: 'https://meltwater.atlassian.net/browse/RFT-129', status: 'Pendiente' },
+                { rftNumber: 'RFT - 130', created: '28-abr-26', subsidiary: '241 - Singapore', amount: 548.10, currency: 'USD', age: 1, responsable: 'Andrea', link: 'https://meltwater.atlassian.net/browse/RFT-130', status: 'Pendiente' }
             ]
         },
         // --- COMPARATIVA ANUAL DE APLICACIÓN DE EFECTIVO ---

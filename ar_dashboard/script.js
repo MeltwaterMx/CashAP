@@ -4,7 +4,7 @@
 
 // ── GLOBAL DATA & PERSISTENCE ──────────────────────────────────
 const STORAGE_KEY = 'ar_dashboard_data';
-const SCHEMA_VERSION = 4; // Increment this when DASHBOARD_DATA structure changes
+const SCHEMA_VERSION = 6; // Increment this when DASHBOARD_DATA structure changes
 let currentCaFilter = 'all'; // Filter for Cash App items
 let activeTab = 'overview'; // Track currently active tab globally
 let currentLang = 'es';    // Language toggle state ('es' | 'en')
@@ -119,7 +119,7 @@ const charts = {};
 const titles = {
   overview: 'Resumen Ejecutivo', dso: 'Análisis DSO', aging: 'Aging Report',
   risk: 'Análisis de Riesgo', segmentation: 'Segmentación de Cartera', projection: 'Proyección de Recaudos',
-  cashapp: 'Cash Applications'
+  cashapp: 'Cash Applications', refunds: 'Refunds'
 };
 function switchTab(id, btn) {
   document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
@@ -158,6 +158,18 @@ function chartDefaults() {
   Chart.defaults.font.size = 11;
   Chart.defaults.scale.grid.color = 'rgba(255, 255, 255, 0.02)';
   Chart.defaults.scale.grid.drawBorder = false;
+
+  // Global Tooltip Styling for better readability on high-res screens
+  Chart.defaults.plugins.tooltip.backgroundColor = 'rgba(15, 23, 42, 0.98)';
+  Chart.defaults.plugins.tooltip.padding = 16;
+  Chart.defaults.plugins.tooltip.titleFont = { size: 16, weight: 'bold', family: 'Inter' };
+  Chart.defaults.plugins.tooltip.bodyFont = { size: 15, family: 'Inter' };
+  Chart.defaults.plugins.tooltip.footerFont = { size: 14 };
+  Chart.defaults.plugins.tooltip.cornerRadius = 10;
+  Chart.defaults.plugins.tooltip.boxPadding = 8;
+  Chart.defaults.plugins.tooltip.borderColor = 'rgba(255, 255, 255, 0.1)';
+  Chart.defaults.plugins.tooltip.borderWidth = 1;
+  Chart.defaults.plugins.tooltip.usePointStyle = true;
   
   // Let's add drop shadow via custom plugin for all charts
   Chart.register({
@@ -464,66 +476,432 @@ function initCharts(tab) {
   }
   if (tab === 'cashapp') {
     buildCashApp();
+  }
+  if (tab === 'refunds' || tab === '__all') {
     buildRefunds();
+    buildRefundComparisonChart();
+  }
+}
+
+// ── REFUNDS INTERANNUAL COMPARISON ─────────────────────────────
+function buildRefundComparisonChart() {
+  const rf = DATA.cashapp.refunds;
+  const el = document.getElementById('refComparisonChart');
+  if (!el || !rf) return;
+
+  const isEn = typeof currentLang !== 'undefined' && currentLang === 'en';
+  const monthNames = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+  const monthNamesFull = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+
+  // 1. Find the latest month in the data
+  let latestSortKey = 0;
+  if (rf.items && rf.items.length > 0) {
+    rf.items.forEach(item => {
+      if (!item.created) return;
+      const parts = item.created.toLowerCase().split('-');
+      if (parts.length >= 2) {
+        const mStr = parts[1].trim();
+        const yStr = parts.length >= 3 ? parts[2].trim() : '26';
+        const mNum = monthNames.indexOf(mStr) + 1;
+        const fullYear = yStr.length === 2 ? 2000 + parseInt(yStr) : parseInt(yStr);
+        const key = fullYear * 100 + mNum;
+        if (key > latestSortKey) latestSortKey = key;
+      }
+    });
+  }
+
+  // If no data, use current date
+  if (latestSortKey === 0) {
+    const now = new Date();
+    latestSortKey = now.getFullYear() * 100 + (now.getMonth() + 1);
+  }
+
+  // 2. Generate a rolling 6-month window ending at latestSortKey
+  const rollingLabels = [];
+  const rollingKeys = []; // [202511, 202512, 202601, ...]
+  
+  let curYear = Math.floor(latestSortKey / 100);
+  let curMonth = latestSortKey % 100;
+
+  for (let i = 0; i < 6; i++) {
+    const label = `${monthNamesFull[curMonth-1]} '${curYear.toString().slice(-2)}`;
+    rollingLabels.unshift(label);
+    rollingKeys.unshift(curYear * 100 + curMonth);
+    
+    curMonth--;
+    if (curMonth === 0) {
+      curMonth = 12;
+      curYear--;
+    }
+  }
+
+  // 3. Aggregate data for these 6 months
+  const dataPoints = {}; // { 202603: { 'USD': 100, ... } }
+  rollingKeys.forEach(k => dataPoints[k] = {});
+
+  if (rf.items) {
+    rf.items.forEach(item => {
+      if (!item.created) return;
+      const parts = item.created.toLowerCase().split('-');
+      if (parts.length >= 2) {
+        const mStr = parts[1].trim();
+        const yStr = parts.length >= 3 ? parts[2].trim() : '26';
+        const mNum = monthNames.indexOf(mStr) + 1;
+        const fullYear = yStr.length === 2 ? 2000 + parseInt(yStr) : parseInt(yStr);
+        const key = fullYear * 100 + mNum;
+        
+        if (dataPoints[key]) {
+          const cur = item.currency || 'USD';
+          const amt = Number(item.amount) || 0;
+          dataPoints[key][cur] = (dataPoints[key][cur] || 0) + amt;
+        }
+      }
+    });
+  }
+
+  const currenciesSet = new Set();
+  rollingKeys.forEach(k => {
+    Object.keys(dataPoints[k]).forEach(cur => currenciesSet.add(cur));
+  });
+  const currenciesFound = Array.from(currenciesSet);
+  if (currenciesFound.length === 0) currenciesFound.push('USD');
+
+  // 4. Update KPIs with FX Normalization
+  const FX_RATES = { 'USD': 1.0, 'EUR': 1.08, 'MXN': 0.058, 'GBP': 1.25, 'CAD': 0.74 };
+  
+  const getUSD = (amt, cur) => amt * (FX_RATES[cur.toUpperCase()] || 1.0);
+
+  const totalActualUSD = rf.items.reduce((s, i) => s + getUSD(Number(i.amount) || 0, i.currency || 'USD'), 0);
+  
+  // Like-for-Like simulation: only sum prevYear months that have data in current window
+  const baselineMonthUSD = 25000; 
+  let totalPrevUSD = 0;
+  rollingKeys.forEach(k => {
+     let monthTotalUSD = 0;
+     currenciesFound.forEach(cur => {
+        const amt = dataPoints[k][cur] || 0;
+        monthTotalUSD += getUSD(amt, cur);
+     });
+     if (monthTotalUSD > 0) totalPrevUSD += baselineMonthUSD;
+  });
+
+  const growthPct = totalPrevUSD > 0 ? ((totalActualUSD - totalPrevUSD) / totalPrevUSD * 100).toFixed(1) : '0.0';
+
+  const elActual = document.getElementById('refCompTotalActual');
+  const elPrev = document.getElementById('refCompTotalPrev');
+  const elGrowth = document.getElementById('refCompGrowth');
+  const elBest = document.getElementById('refCompBestMonth');
+
+  if (elActual) elActual.textContent = fmt(totalActualUSD) + ' (USD Eq.)';
+  if (elPrev) elPrev.textContent = fmt(totalPrevUSD) + ' (USD Eq.)';
+  if (elGrowth) {
+    const sign = +growthPct >= 0 ? '+' : '';
+    elGrowth.textContent = `${sign}${growthPct}%`;
+    elGrowth.style.color = +growthPct >= 0 ? '#10b981' : '#ef4444';
+  }
+
+  // Best Month calculation (using USD normalization for comparison)
+  let maxMonthUSD = 0;
+  let bestMonthLabel = rollingLabels[0];
+  rollingKeys.forEach((k, i) => {
+     let monthTotalUSD = 0;
+     currenciesFound.forEach(cur => {
+        monthTotalUSD += getUSD(dataPoints[k][cur] || 0, cur);
+     });
+     if (monthTotalUSD > maxMonthUSD) {
+       maxMonthUSD = monthTotalUSD;
+       bestMonthLabel = rollingLabels[i];
+     }
+  });
+  if (elBest) elBest.textContent = `${bestMonthLabel} · ${fmt(maxMonthUSD)} (USD Eq.)`;
+
+  // 5. Delta Badges (MoM)
+  const deltaRow = document.getElementById('refCompDeltaRow');
+  if (deltaRow) {
+    deltaRow.innerHTML = '';
+    rollingKeys.forEach((k, i) => {
+      if (i === 0) return;
+      const prevK = rollingKeys[i-1];
+      let currTotal = 0, prevTotal = 0;
+      currenciesFound.forEach(cur => {
+        currTotal += (dataPoints[k][cur] || 0);
+        prevTotal += (dataPoints[prevK][cur] || 0);
+      });
+      if (prevTotal === 0 && currTotal === 0) return;
+      
+      const diff = currTotal - prevTotal;
+      const pctVal = prevTotal > 0 ? ((diff / prevTotal) * 100).toFixed(1) : '100';
+      const sign = diff >= 0 ? '+' : '';
+      const cls = diff >= 0 ? 'positive' : 'negative';
+      const badge = document.createElement('div');
+      badge.className = `comp-delta-badge ${cls}`;
+      badge.innerHTML = `<span class="delta-month">${rollingLabels[i]}</span><span>${sign}${pctVal}% MoM</span>`;
+      deltaRow.appendChild(badge);
+    });
+  }
+
+  // 6. Build Chart
+  const CURRENCY_COLORS = { 'USD': '#8b5cf6', 'EUR': '#0ea5e9', 'MXN': '#10b981', 'GBP': '#f59e0b', 'CAD': '#f43f5e' };
+  const datasets = currenciesFound.map((cur, i) => {
+    const col = CURRENCY_COLORS[cur] || (i === 0 ? '#8b5cf6' : '#3b82f6');
+    return {
+      label: `Refunds (${cur})`,
+      data: rollingKeys.map(k => dataPoints[k][cur] || 0),
+      borderColor: col, borderWidth: 4, pointRadius: 6, pointHoverRadius: 9,
+      pointBackgroundColor: col, pointBorderColor: '#fff', pointBorderWidth: 2, tension: 0.4, fill: true,
+      backgroundColor: (context) => {
+        const ctx = context.chart.ctx;
+        const gradient = ctx.createLinearGradient(0, 0, 0, 300);
+        gradient.addColorStop(0, hexToRgbA(col, 0.2));
+        gradient.addColorStop(1, hexToRgbA(col, 0));
+        return gradient;
+      }
+    };
+  });
+
+  function hexToRgbA(hex, alpha) {
+    let r = 0, g = 0, b = 0;
+    if (hex.length === 4) {
+      r = "0x" + hex[1] + hex[1]; g = "0x" + hex[2] + hex[2]; b = "0x" + hex[3] + hex[3];
+    } else if (hex.length === 7) {
+      r = "0x" + hex[1] + hex[2]; g = "0x" + hex[3] + hex[4]; b = "0x" + hex[5] + hex[6];
+    }
+    return `rgba(${+r},${+g},${+b},${alpha})`;
+  }
+
+  if (!charts.refComparison) {
+    charts.refComparison = new Chart(el, {
+      type: 'line',
+      data: { labels: rollingLabels, datasets: datasets },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: {
+          legend: { display: true, position: 'top', labels: { color: '#fff', font: { weight: '600' }, usePointStyle: true, padding: 20 } },
+          tooltip: {
+            backgroundColor: 'rgba(15, 23, 42, 0.98)', padding: 16, titleFont: { size: 18, weight: 'bold' }, bodyFont: { size: 16 },
+            borderColor: 'rgba(255,255,255,0.2)', borderWidth: 1, displayColors: true, boxPadding: 8,
+            callbacks: { label: (c) => `${c.dataset.label}: ${fmt(c.parsed.y)}` }
+          }
+        },
+        scales: {
+          x: { grid: { color: 'rgba(255,255,255,0.03)' }, ticks: { color: '#94a3b8', font: { size: 12 } } },
+          y: { grid: { color: 'rgba(255,255,255,0.03)', drawBorder: false }, ticks: { color: '#94a3b8', font: { size: 12 }, callback: v => '$' + (v / 1000).toFixed(0) + 'K' } }
+        }
+      }
+    });
+  } else {
+    charts.refComparison.data.labels = rollingLabels;
+    charts.refComparison.data.datasets = datasets;
+    charts.refComparison.update();
   }
 }
 
 // ── REFUNDS ANALYSIS ───────────────────────────────────────────
 function buildRefunds() {
   const rf = DATA.cashapp.refunds;
-  const refundsValEl = document.getElementById('ca-refunds');
-  if (refundsValEl) refundsValEl.textContent = fmt(rf.total);
+  
+  // Calculate KPIs and aggregate data for charts
+  const totalAmtByCurrency = {};
+  let maxAge = 0;
+  const statusCounts = {};
+  const subAmt = {};
+  
+  rf.items.forEach(item => {
+    const amt = Number(item.amount) || 0;
+    const cur = item.currency || 'USD';
+    totalAmtByCurrency[cur] = (totalAmtByCurrency[cur] || 0) + amt;
+    if (item.age > maxAge) maxAge = item.age;
+    
+    statusCounts[item.status] = (statusCounts[item.status] || 0) + 1;
+    subAmt[item.subsidiary] = (subAmt[item.subsidiary] || 0) + amt;
+  });
+  
+  // Update Top KPIs
+  const totalAmtHtml = Object.entries(totalAmtByCurrency).map(([cur, amt]) => {
+    return `<div style="display:flex; align-items:baseline; gap:10px; margin-bottom: 4px;">${fmt(amt)} <span style="font-size: 16px; color: var(--text2); font-weight: 600; opacity: 0.7;">${cur}</span></div>`;
+  }).join('');
+  
+  const elTotal = document.getElementById('refTotalAmt');
+  if (elTotal) elTotal.innerHTML = totalAmtHtml || '$0';
+  
+  const elCount = document.getElementById('refTotalCount');
+  if (elCount) elCount.textContent = rf.items.length;
+  
+  const elAge = document.getElementById('refMaxAge');
+  if (elAge) elAge.textContent = maxAge;
 
-  // Chart: Refund Trend
-  if (!charts.caRefundTrend) {
-    charts.caRefundTrend = new Chart(document.getElementById('caRefundTrendChart'), {
-      type: 'line',
-      data: {
-        labels: DATA.months,
-        datasets: [{
-          label: 'Refunds ($)',
-          data: rf.history,
-          borderColor: COLORS.purple,
-          backgroundColor: 'rgba(217, 70, 239, 0.1)',
-          fill: true,
-          tension: 0.5,
-          pointRadius: 0,
-          pointHoverRadius: 6,
-          pointBackgroundColor: COLORS.purple,
-          borderWidth: 2
-        }]
-      },
-      options: {
-        responsive: true, maintainAspectRatio: false,
-        plugins: { legend: { display: false } },
-        scales: {
-          x: { grid: { display: false }, ticks: { font: { size: 10 } } },
-          y: { grid: { color: '#232840' }, ticks: { font: { size: 10 }, callback: v => '$' + (v / 1000).toFixed(0) + 'K' } }
+  // Chart 1: Subsidiary Doughnut
+  const subLabels = Object.keys(subAmt);
+  const subData = Object.values(subAmt);
+  const subEl = document.getElementById('refSubsidiaryChart');
+  if (subEl) {
+    if (!charts.refSubsidiaryChart) {
+      charts.refSubsidiaryChart = new Chart(subEl, {
+        type: 'doughnut',
+        data: {
+          labels: subLabels,
+          datasets: [{
+            data: subData,
+            backgroundColor: [COLORS.blue, COLORS.purple, COLORS.green, COLORS.yellow, COLORS.orange],
+            borderWidth: 0, borderRadius: 8, spacing: 4, hoverOffset: 6
+          }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false, cutout: '80%',
+          plugins: { 
+            legend: { position: 'right', labels: { color: COLORS.text2, font: { size: 11, family: 'Inter' }, usePointStyle: true, pointStyle: 'circle', boxWidth: 8 } },
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                  const val = context.raw;
+                  const pct = ((val / total) * 100).toFixed(1) + '%';
+                  return ` ${context.label}: $${val.toLocaleString()} (${pct})`;
+                }
+              }
+            }
+          }
         }
-      }
-    });
-  } else {
-    charts.caRefundTrend.data.datasets[0].data = rf.history;
-    charts.caRefundTrend.update();
+      });
+    } else {
+      charts.refSubsidiaryChart.data.labels = subLabels;
+      charts.refSubsidiaryChart.data.datasets[0].data = subData;
+      charts.refSubsidiaryChart.update();
+    }
+  }
+
+  // Chart 2: Status Doughnut
+  const statusLabels = Object.keys(statusCounts);
+  const statusData = Object.values(statusCounts);
+  const statusEl = document.getElementById('refStatusChart');
+  if (statusEl) {
+    if (!charts.refStatusChart) {
+      charts.refStatusChart = new Chart(statusEl, {
+        type: 'doughnut',
+        data: {
+          labels: statusLabels,
+          datasets: [{
+            data: statusData,
+            backgroundColor: [COLORS.red, COLORS.yellow, COLORS.green],
+            borderWidth: 0, borderRadius: 8, spacing: 4, hoverOffset: 6
+          }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false, cutout: '80%',
+          plugins: { 
+            legend: { position: 'right', labels: { color: COLORS.text2, font: { size: 11, family: 'Inter' }, usePointStyle: true, pointStyle: 'circle', boxWidth: 8 } },
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                  const val = context.raw;
+                  const pct = ((val / total) * 100).toFixed(1) + '%';
+                  return ` ${context.label}: ${val} (${pct})`;
+                }
+              }
+            }
+          }
+        }
+      });
+    } else {
+      charts.refStatusChart.data.labels = statusLabels;
+      charts.refStatusChart.data.datasets[0].data = statusData;
+      charts.refStatusChart.update();
+    }
   }
 
   // Table: Pending Refunds
   const tableBody = document.getElementById('refundTableBody');
   if (tableBody) {
     tableBody.innerHTML = '';
-    rf.items.forEach(item => {
-      const cls = item.status === 'Pendiente' ? 'critical' : 'medium';
+    rf.items.forEach((item, index) => {
+      const cls = item.status === 'Pendiente' ? 'critical' : (item.status === 'Validando' ? 'high' : 'medium');
+      const ageColor = item.age > 10 ? 'color: var(--red)' : '';
+      
+      let formattedDate = item.created;
+      if (item.created) {
+        const parts = item.created.toLowerCase().split('-');
+        if (parts.length >= 2) {
+          const d = parts[0].padStart(2, '0');
+          const m = parts[1].charAt(0).toUpperCase() + parts[1].slice(1);
+          const y = parts.length >= 3 ? (parts[2].length === 2 ? '20'+parts[2] : parts[2]) : '';
+          formattedDate = y ? `${d}-${m}-${y}` : `${d}-${m}`;
+        }
+      }
+      
       const tr = document.createElement('tr');
       tr.innerHTML = `
-        <td><strong>${item.client}</strong></td>
-        <td>${fmt(item.amount)}</td>
-        <td>${item.reason}</td>
-        <td>${item.date}</td>
+        <td style="background-color: rgba(16, 185, 129, 0.15); color: #10b981;"><strong>${item.rftNumber}</strong></td>
+        <td>${formattedDate}</td>
+        <td>${item.subsidiary}</td>
+        <td>${Number(item.amount).toLocaleString('en-US', {minimumFractionDigits: 2})}</td>
+        <td>${item.currency}</td>
+        <td><span style="${ageColor}; font-weight: bold;">${item.age}</span></td>
+        <td>${item.responsable}</td>
+        <td><a href="${item.link}" target="_blank" style="color: var(--blue); text-decoration: underline;">${item.link}</a></td>
         <td><span class="risk-badge ${cls}">${item.status}</span></td>
+        <td>
+          <button onclick="editRefund(${index})" style="background:none;border:none;color:var(--yellow);cursor:pointer;margin-right:8px;" title="Editar">✏️</button>
+          <button onclick="deleteRefund(${index})" style="background:none;border:none;color:var(--red);cursor:pointer;" title="Eliminar">🗑️</button>
+        </td>
       `;
       tableBody.appendChild(tr);
     });
   }
+}
+
+window.deleteRefund = function(index) {
+  if (confirm('¿Seguro que deseas eliminar este registro?')) {
+    DATA.cashapp.refunds.items.splice(index, 1);
+    saveState();
+    buildRefunds();
+    buildRefundComparisonChart();
+  }
+};
+
+window.editRefund = function(index) {
+  const tableBody = document.getElementById('refundTableBody');
+  const row = tableBody.children[index];
+  const item = DATA.cashapp.refunds.items[index];
+  
+  row.innerHTML = `
+    <td><input type="text" id="edit_rft_${index}" value="${item.rftNumber}" style="width:80px;background:var(--surface);color:var(--text);border:1px solid #444;padding:4px;border-radius:4px;"></td>
+    <td><input type="text" id="edit_cre_${index}" value="${item.created}" style="width:70px;background:var(--surface);color:var(--text);border:1px solid #444;padding:4px;border-radius:4px;"></td>
+    <td><input type="text" id="edit_sub_${index}" value="${item.subsidiary}" style="width:110px;background:var(--surface);color:var(--text);border:1px solid #444;padding:4px;border-radius:4px;"></td>
+    <td><input type="number" id="edit_amt_${index}" value="${item.amount}" style="width:90px;background:var(--surface);color:var(--text);border:1px solid #444;padding:4px;border-radius:4px;"></td>
+    <td><input type="text" id="edit_cur_${index}" value="${item.currency}" style="width:50px;background:var(--surface);color:var(--text);border:1px solid #444;padding:4px;border-radius:4px;"></td>
+    <td><input type="number" id="edit_age_${index}" value="${item.age}" style="width:50px;background:var(--surface);color:var(--text);border:1px solid #444;padding:4px;border-radius:4px;"></td>
+    <td><input type="text" id="edit_res_${index}" value="${item.responsable}" style="width:80px;background:var(--surface);color:var(--text);border:1px solid #444;padding:4px;border-radius:4px;"></td>
+    <td><input type="text" id="edit_lnk_${index}" value="${item.link}" style="width:100px;background:var(--surface);color:var(--text);border:1px solid #444;padding:4px;border-radius:4px;"></td>
+    <td>
+      <select id="edit_sta_${index}" style="background:var(--surface);color:var(--text);border:1px solid #444;padding:4px;border-radius:4px;">
+        <option value="Pendiente" ${item.status==='Pendiente'?'selected':''}>Pendiente</option>
+        <option value="Validando" ${item.status==='Validando'?'selected':''}>Validando</option>
+        <option value="Completado" ${item.status==='Completado'?'selected':''}>Completado</option>
+      </select>
+    </td>
+    <td>
+      <button onclick="saveEditRefund(${index})" style="background:none;border:none;color:var(--green);cursor:pointer;margin-right:8px;" title="Guardar">✔️</button>
+      <button onclick="buildRefunds()" style="background:none;border:none;color:var(--red);cursor:pointer;" title="Cancelar">❌</button>
+    </td>
+  `;
+};
+
+window.saveEditRefund = function(index) {
+  const item = DATA.cashapp.refunds.items[index];
+  item.rftNumber = document.getElementById(`edit_rft_${index}`).value;
+  item.created = document.getElementById(`edit_cre_${index}`).value;
+  item.subsidiary = document.getElementById(`edit_sub_${index}`).value;
+  item.amount = Number(document.getElementById(`edit_amt_${index}`).value);
+  item.currency = document.getElementById(`edit_cur_${index}`).value;
+  item.age = Number(document.getElementById(`edit_age_${index}`).value);
+  item.responsable = document.getElementById(`edit_res_${index}`).value;
+  item.link = document.getElementById(`edit_lnk_${index}`).value;
+  item.status = document.getElementById(`edit_sta_${index}`).value;
+  
+  saveState();
+  buildRefunds();
+  buildRefundComparisonChart();
 }
 
 // ── CASH APPLICATIONS ──────────────────────────────────────────
@@ -1386,6 +1764,22 @@ function parseCSVAndApply(csvText) {
       }));
     }
 
+    if (headers.includes('rft_number')) {
+      parsed.cashapp = parsed.cashapp || { kpis: {}, suspense: {}, items: [], refunds: { items: [] } };
+      parsed.cashapp.refunds = parsed.cashapp.refunds || { items: [] };
+      parsed.cashapp.refunds.items = rows.filter(r => r.rft_number).map(r => ({
+        rftNumber: r.rft_number,
+        created: r.created || '',
+        subsidiary: r.subsidiary || '',
+        amount: n(r.amount),
+        currency: r.currency || '',
+        age: n(r.age),
+        responsable: r.responsable || '',
+        link: r.link || '',
+        status: r.status || 'Pendiente'
+      }));
+    }
+
     // Section 9: Comparativa Interanual (YoY Cash Applied History)
     const yoyHeader = headers.find(h => h.includes('ca_history') || h === 'month');
     if (yoyHeader) {
@@ -1414,7 +1808,7 @@ function parseCSVAndApply(csvText) {
 
   const isHeaderRow = (cols) => {
     // A row is likely a header if it contains specific known keywords
-    return cols.some(c => ['dso_actual', 'aging_bucket', 'name', 'client', 'month', 'ca_unapplied', 'sus_noref', 'ca_ref', 'ca_history_month'].includes(c));
+    return cols.some(c => ['dso_actual', 'aging_bucket', 'name', 'client', 'month', 'ca_unapplied', 'sus_noref', 'ca_ref', 'ca_history_month', 'rft_number'].includes(c));
   };
 
   for (let i = 0; i < lines.length; i++) {
@@ -1480,6 +1874,9 @@ function applyData(parsed) {
     if (parsed.cashapp.kpis && Object.keys(parsed.cashapp.kpis).length > 0) DATA.cashapp.kpis = parsed.cashapp.kpis;
     if (parsed.cashapp.suspense && Object.keys(parsed.cashapp.suspense).length > 0) DATA.cashapp.suspense = parsed.cashapp.suspense;
     if (parsed.cashapp.items && parsed.cashapp.items.length > 0) DATA.cashapp.items = parsed.cashapp.items;
+    if (parsed.cashapp.refunds && parsed.cashapp.refunds.items && parsed.cashapp.refunds.items.length > 0) {
+      DATA.cashapp.refunds.items = parsed.cashapp.refunds.items;
+    }
     // Apply new YoY comparison chart data
     if (parsed.cashapp.appliedCashHistory) {
       DATA.cashapp.appliedCashHistory = parsed.cashapp.appliedCashHistory;
@@ -1565,6 +1962,13 @@ function exportCSV() {
     });
     csv += "\n";
   }
+
+  // 10. Refunds Table
+  csv += "rft_number,created,subsidiary,amount,currency,age,responsable,link,status\n";
+  d.cashapp.refunds.items.forEach(item => {
+    csv += `${item.rftNumber},${item.created},${item.subsidiary},${item.amount},${item.currency},${item.age},${item.responsable},${item.link},${item.status}\n`;
+  });
+  csv += "\n";
 
   // Crear y descargar archivo
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -1841,12 +2245,12 @@ const enToEs = Object.fromEntries(Object.entries(esToEn).map(([k,v]) => [v,k]));
 const titlesEn = {
   overview: 'Executive Summary', dso: 'DSO Analysis', aging: 'Aging Report',
   risk: 'Risk Analysis', segmentation: 'Portfolio Segmentation', projection: 'Collections Projection',
-  cashapp: 'Cash Applications'
+  cashapp: 'Cash Applications', refunds: 'Refunds'
 };
 const titlesEs = {
   overview: 'Resumen Ejecutivo', dso: 'Análisis DSO', aging: 'Aging Report',
   risk: 'Análisis de Riesgo', segmentation: 'Segmentación de Cartera', projection: 'Proyección de Recaudos',
-  cashapp: 'Cash Applications'
+  cashapp: 'Cash Applications', refunds: 'Análisis de Refunds'
 };
 
 function translateDOMNode(element, dict) {
