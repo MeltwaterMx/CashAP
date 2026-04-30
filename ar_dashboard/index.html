@@ -7,7 +7,7 @@
     <title>Cuentas por Cobrar – Análisis Estratégico</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link
-        href="https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500;600;700;800&family=Outfit:wght@200;300;500;700;800&display=swap"
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Montserrat:wght@300;400;500;600;700;800&family=Lexend:wght@300;400;500;600;700;800&family=Outfit:wght@300;400;500;600;700;800&display=swap"
         rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
@@ -421,11 +421,11 @@
                 <div class="insights-box"
                     style="background: rgba(85, 110, 230, 0.1); border-left: 4px solid var(--blue); padding: 16px; border-radius: 8px; margin-bottom: 20px;">
                     <h3
-                        style="color: var(--blue); margin-top:0; margin-bottom: 8px; font-size: 14px; display: flex; align-items: center;">
-                        <span style="margin-right: 6px;">💡</span> Análisis Inteligente de Cash Applications
+                        style="color: var(--blue); margin-top:0; margin-bottom: 15px; font-size: 20px; font-weight: 800; display: flex; align-items: center;">
+                        <span style="margin-right: 12px; font-size: 26px;">💡</span> Análisis Inteligente de Cash Applications
                     </h3>
                     <ul id="ca-insights-list"
-                        style="margin: 0; padding-left: 20px; color: var(--text); font-size: 13px; line-height: 1.6;">
+                        style="margin: 0; padding-left: 20px; color: var(--text); font-size: 18px; line-height: 2.0;">
                         <li>Calculando insights...</li>
                     </ul>
                 </div>
@@ -529,35 +529,48 @@
             <!-- REFUNDS TAB -->
             <div id="tab-refunds" class="tab-content">
                 <!-- PREMIUM KPI GRID -->
-                <div class="kpi-grid" style="margin-bottom: 24px;">
+                <div class="kpi-grid">
                     <!-- Consolidado USD -->
-                    <div class="kpi-card" style="border-left: 4px solid #8b5cf6;">
+                    <div class="kpi-card accent-purple">
                         <div class="kpi-label">Total Reembolsos (USD Eq.)</div>
-                        <div class="kpi-value" id="refCompTotalActual" style="color: #8b5cf6; font-size: 26px;">—</div>
-                        <div class="kpi-trend" id="refCompTotalActualSub" style="font-size: 11px; opacity: 0.7;">Normalizado con FX Real</div>
+                        <div class="kpi-value" id="refCompTotalActual">—</div>
+                        <div class="kpi-trend" id="refCompTotalActualSub">Cargando desglose...</div>
                         <div class="kpi-icon-bg">💸</div>
                     </div>
                     <!-- Solicitudes Abiertas -->
-                    <div class="kpi-card" style="border-left: 4px solid #3b82f6;">
+                    <div class="kpi-card accent-blue">
                         <div class="kpi-label">Solicitudes Abiertas</div>
-                        <div class="kpi-value" id="refTotalCount" style="color: #3b82f6;">0</div>
-                        <div class="kpi-trend" style="font-size: 11px; opacity: 0.7;">Pendientes de Validación</div>
+                        <div class="kpi-value" id="refTotalCount">0</div>
+                        <div class="kpi-trend">Pendientes de Validación</div>
                         <div class="kpi-icon-bg">📋</div>
                     </div>
                     <!-- Crecimiento LfL -->
-                    <div class="kpi-card" id="refGrowthCard" style="border-left: 4px solid #10b981;">
+                    <div class="kpi-card accent-green" id="refGrowthCard">
                         <div class="kpi-label">Crecimiento LfL</div>
-                        <div class="kpi-value" id="refCompGrowth" style="color: #10b981;">—</div>
-                        <div class="kpi-trend" id="refGrowthTrend" style="font-size: 11px; opacity: 0.7;">vs Año Anterior</div>
+                        <div class="kpi-value" id="refCompGrowth">—</div>
+                        <div class="kpi-trend" id="refGrowthTrend">vs Año Anterior</div>
                         <div class="kpi-icon-bg">📈</div>
                     </div>
                     <!-- Mejor Mes -->
-                    <div class="kpi-card" style="border-left: 4px solid #f59e0b;">
+                    <div class="kpi-card accent-orange">
                         <div class="kpi-label">Mejor Mes (2026)</div>
-                        <div class="kpi-value" id="refCompBestMonth" style="font-size: 20px; color: #f59e0b;">—</div>
-                        <div class="kpi-trend" style="font-size: 11px; opacity: 0.7;">Pico de Operación</div>
+                        <div class="kpi-value" id="refCompBestMonth" style="font-size: 18px;">—</div>
+                        <div class="kpi-trend">Pico de Operación</div>
                         <div class="kpi-icon-bg">🏆</div>
                     </div>
+                </div>
+                
+                <!-- NEW: ALGORITHMIC INSIGHTS FOR REFUNDS -->
+                <div class="insights-box"
+                    style="background: rgba(139, 92, 246, 0.08); border-left: 4px solid #8b5cf6; padding: 16px 20px; border-radius: 12px; margin-bottom: 24px; border-top: 1px solid rgba(139, 92, 246, 0.15); border-right: 1px solid rgba(139, 92, 246, 0.1); backdrop-filter: blur(8px);">
+                    <h3
+                        style="color: #a855f7; margin-top:0; margin-bottom: 20px; font-size: 20px; font-weight: 800; display: flex; align-items: center; text-transform: uppercase; letter-spacing: 1.2px;">
+                        <span style="margin-right: 15px; font-size: 28px;">✨</span> Análisis Inteligente de Refunds
+                    </h3>
+                    <ul id="ref-insights-list"
+                        style="margin: 0; padding-left: 22px; color: rgba(255,255,255,1); font-size: 18px; line-height: 2.0;">
+                        <li style="color: var(--text2);">Analizando patrones de reembolsos...</li>
+                    </ul>
                 </div>
 
                 <!-- DYNAMIC CHART SECTION -->
@@ -574,33 +587,38 @@
                         <div class="comp-chart-wrap" style="position: relative; height:400px; width: 100%;">
                             <canvas id="refComparisonChart"></canvas>
                         </div>
+
+                        <!-- NEW: Detailed Data Summary below chart -->
+                        <div id="refChartDetails" style="margin-top: 24px; padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.08); display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
+                        </div>
                     </div>
                 </div>
 
                 <!-- ANALISIS DE REFUNDS TABLE -->
                 <div class="section-header">
-                    <h3>Detalle de Análisis de Refunds</h3>
-                    <p>Gestión individual de partidas pendientes de reembolso.</p>
+                    <h3>Distribución y Segmentación</h3>
+                    <p>Análisis por subsidiaria y estado de validación.</p>
                 </div>
-                <div class="charts-row" style="grid-template-columns: 1fr 1fr;">
-                    <div class="chart-card" style="max-height: none; height: auto;">
+                <div class="charts-row" style="grid-template-columns: 1fr 1fr; gap: 24px;">
+                    <div class="chart-card" style="max-height: none; height: auto; background: rgba(15, 23, 42, 0.4);">
                         <h3 class="chart-title">Por Subsidiaria</h3>
-                        <div class="chart-container" style="position: relative; height:250px; width: 100%;">
+                        <div class="chart-container" style="position: relative; height:220px; width: 100%;">
                             <canvas id="refSubsidiaryChart"></canvas>
                         </div>
+                        <div id="refSubsidiaryDetails" style="margin-top: 16px; display: grid; grid-template-columns: 1fr; gap: 8px;"></div>
                     </div>
-                    <div class="chart-card" style="max-height: none; height: auto;">
+                    <div class="chart-card" style="max-height: none; height: auto; background: rgba(15, 23, 42, 0.4);">
                         <h3 class="chart-title">Por Estatus</h3>
-                        <div class="chart-container" style="position: relative; height:250px; width: 100%;">
+                        <div class="chart-container" style="position: relative; height:220px; width: 100%;">
                             <canvas id="refStatusChart"></canvas>
                         </div>
+                        <div id="refStatusDetails" style="margin-top: 16px; display: grid; grid-template-columns: 1fr; gap: 8px;"></div>
                     </div>
                 </div>
 
-                <!-- ANALISIS DE REFUNDS -->
-                <div class="section-header">
-                    <h3>Análisis de Refunds</h3>
-                    <p>Detalle de las solicitudes de devolución pendientes de validación y pago.</p>
+                <div class="section-header" style="margin-top: 32px;">
+                    <h3>Gestión de Solicitudes Individuales</h3>
+                    <p>Detalle de las partidas pendientes de validación y pago.</p>
                 </div>
                 <div class="risk-table-wrapper">
                     <table class="risk-table" id="refundTable">

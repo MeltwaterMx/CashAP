@@ -134,10 +134,15 @@ function switchTab(id, btn) {
 
 // ── HELPERS ────────────────────────────────────────────────────
 const fmt = n => {
-  const locale = currentLang === 'en' ? 'en-US' : 'es-CR';
-  return '$' + n.toLocaleString(locale);
+  // Use en-US to force comma as thousands separator as requested
+  return '$' + Math.round(n).toLocaleString('en-US');
 };
 const pct = (a, t) => ((a / t) * 100).toFixed(1) + '%';
+
+// FX Normalization Helpers
+const FX_RATES = { 'USD': 1.0, 'EUR': 1.08, 'MXN': 0.058, 'GBP': 1.25, 'CAD': 0.74 };
+const getUSD = (amt, cur) => amt * (FX_RATES[(cur || 'USD').toUpperCase()] || 1.0);
+
 const COLORS = {
   blue: '#3b82f6',
   purple: '#8b5cf6',
@@ -567,10 +572,6 @@ function buildRefundComparisonChart() {
   if (currenciesFound.length === 0) currenciesFound.push('USD');
 
   // 4. Update KPIs with FX Normalization
-  const FX_RATES = { 'USD': 1.0, 'EUR': 1.08, 'MXN': 0.058, 'GBP': 1.25, 'CAD': 0.74 };
-  
-  const getUSD = (amt, cur) => amt * (FX_RATES[cur.toUpperCase()] || 1.0);
-
   const totalActualUSD = rf.items.reduce((s, i) => s + getUSD(Number(i.amount) || 0, i.currency || 'USD'), 0);
   
   // Like-for-Like simulation: only sum prevYear months that have data in current window
@@ -606,24 +607,26 @@ function buildRefundComparisonChart() {
     const sign = +growthPct >= 0 ? '+' : '';
     elGrowth.textContent = `${sign}${growthPct}%`;
     const card = document.getElementById('refGrowthCard');
-    if (card) card.style.borderLeft = +growthPct >= 0 ? '4px solid #10b981' : '4px solid #ef4444';
+    if (card) card.style.borderLeft = +growthPct > 0 ? '4px solid #ef4444' : '4px solid #10b981';
+    if (elGrowth) elGrowth.style.color = +growthPct > 0 ? '#ef4444' : '#10b981';
   }
   if (elCount) elCount.textContent = rf.items.length;
 
-  // Best Month calculation (using USD normalization for comparison)
-  let maxMonthUSD = 0;
+  // Best Month calculation (For Refunds: MINIMUM is best)
+  let minMonthUSD = Infinity;
   let bestMonthLabel = rollingLabels[0];
   rollingKeys.forEach((k, i) => {
      let monthTotalUSD = 0;
      currenciesFound.forEach(cur => {
         monthTotalUSD += getUSD(dataPoints[k][cur] || 0, cur);
      });
-     if (monthTotalUSD > maxMonthUSD) {
-       maxMonthUSD = monthTotalUSD;
+     if (monthTotalUSD < minMonthUSD && monthTotalUSD > 0) {
+       minMonthUSD = monthTotalUSD;
        bestMonthLabel = rollingLabels[i];
      }
   });
-  if (elBest) elBest.textContent = `${bestMonthLabel} · ${fmt(maxMonthUSD)}`;
+  if (minMonthUSD === Infinity) minMonthUSD = 0;
+  if (elBest) elBest.textContent = `${bestMonthLabel} · ${fmt(minMonthUSD)}`;
 
   // 5. Delta Badges (MoM)
   const deltaRow = document.getElementById('refCompDeltaRow');
@@ -642,7 +645,8 @@ function buildRefundComparisonChart() {
       const diff = currTotalUSD - prevTotalUSD;
       const pctVal = prevTotalUSD > 0 ? ((diff / prevTotalUSD) * 100).toFixed(1) : '100';
       const sign = diff >= 0 ? '+' : '';
-      const cls = diff >= 0 ? 'positive' : 'negative';
+      // FOR REFUNDS: diff > 0 is Negative (Red), diff < 0 is Positive (Green)
+      const cls = diff > 0 ? 'negative' : 'positive';
       const badge = document.createElement('div');
       badge.className = `comp-delta-badge ${cls}`;
       badge.style.minWidth = '80px';
@@ -711,6 +715,42 @@ function buildRefundComparisonChart() {
     charts.refComparison.data.datasets = datasets;
     charts.refComparison.update();
   }
+
+  // Populate Detailed Summary (Consolidated)
+  const detailBox = document.getElementById('refChartDetails');
+  if (detailBox) {
+      detailBox.innerHTML = '';
+      
+      // Title for the section
+      const summaryTitle = document.createElement('div');
+      summaryTitle.style.cssText = `grid-column: 1 / -1; font-size: 13px; font-weight: 700; color: var(--text3); text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 16px; opacity: 0.8;`;
+      summaryTitle.textContent = 'Consolidado Histórico (Ventana de 6 Meses)';
+      detailBox.appendChild(summaryTitle);
+
+      currenciesFound.forEach(cur => {
+         // Sum across all rolling months for this currency
+         const totalAmt = rollingKeys.reduce((s, k) => s + (dataPoints[k][cur] || 0), 0);
+         if (totalAmt === 0 && currenciesFound.length > 1) return;
+
+         const usdEq = getUSD(totalAmt, cur);
+         const color = CURRENCY_COLORS[cur] || '#fff';
+         const card = document.createElement('div');
+         card.style.cssText = `background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 16px 20px; border-radius: 12px; display: flex; align-items: center; gap: 16px; flex: 1; min-width: 220px; transition: all 0.3s ease;`;
+         
+         // Format original amount: only use $ if it's USD
+         const originalFmt = cur === 'USD' ? fmt(totalAmt) : Math.round(totalAmt).toLocaleString('en-US') + ' ' + cur;
+
+         card.innerHTML = `
+            <div style="width: 12px; height: 12px; border-radius: 50%; background: ${color}; box-shadow: 0 0 12px ${color};"></div>
+            <div style="flex: 1;">
+               <div style="font-size: 12px; color: var(--text2); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; font-weight: 600;">Total ${cur}</div>
+               <div style="font-size: 26px; font-weight: 800; color: #fff; letter-spacing: -0.8px;">${originalFmt}</div>
+               ${cur !== 'USD' ? `<div style="font-size: 14px; color: var(--text3); margin-top: 6px; font-weight: 500;">≈ ${fmt(usdEq)} USD Eq.</div>` : ''}
+            </div>
+         `;
+         detailBox.appendChild(card);
+      });
+  }
 }
 
 // ── REFUNDS ANALYSIS ───────────────────────────────────────────
@@ -722,6 +762,7 @@ function buildRefunds() {
   let maxAge = 0;
   const statusCounts = {};
   const subAmt = {};
+  const subCur = {}; // Map to track currency for each subsidiary
   
   rf.items.forEach(item => {
     const amt = Number(item.amount) || 0;
@@ -731,6 +772,7 @@ function buildRefunds() {
     
     statusCounts[item.status] = (statusCounts[item.status] || 0) + 1;
     subAmt[item.subsidiary] = (subAmt[item.subsidiary] || 0) + amt;
+    subCur[item.subsidiary] = cur; // Store currency code
   });
   
   // Update Top KPIs
@@ -827,6 +869,49 @@ function buildRefunds() {
     }
   }
 
+  // Populate Details for Doughnut Charts
+  const subDetail = document.getElementById('refSubsidiaryDetails');
+  if (subDetail) {
+    subDetail.innerHTML = '';
+    const total = subData.reduce((a, b) => a + b, 0);
+    subLabels.forEach((label, i) => {
+      const val = subData[i];
+      const pct = total > 0 ? ((val / total) * 100).toFixed(1) : 0;
+      const col = [COLORS.blue, COLORS.purple, COLORS.green, COLORS.yellow, COLORS.orange][i % 5];
+      const item = document.createElement('div');
+      item.style.cssText = `display: flex; justify-content: space-between; align-items: center; font-size: 13px; color: var(--text); padding: 4px 8px; background: rgba(255,255,255,0.02); border-radius: 6px;`;
+      item.innerHTML = `
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <div style="width: 6px; height: 6px; border-radius: 50%; background: ${col};"></div>
+          <span style="color: var(--text2); font-size: 11px;">${label}</span>
+        </div>
+        <div style="font-weight: 600;">${Math.round(val).toLocaleString('en-US')} <span style="font-size: 10px; color: var(--text2);">${subCur[label] || 'USD'}</span> <span style="color: var(--text2); font-weight: 400; font-size: 11px;">(${pct}%)</span></div>
+      `;
+      subDetail.appendChild(item);
+    });
+  }
+
+  const statusDetail = document.getElementById('refStatusDetails');
+  if (statusDetail) {
+    statusDetail.innerHTML = '';
+    const total = statusData.reduce((a, b) => a + b, 0);
+    statusLabels.forEach((label, i) => {
+      const val = statusData[i];
+      const pct = total > 0 ? ((val / total) * 100).toFixed(1) : 0;
+      const col = [COLORS.red, COLORS.yellow, COLORS.green][i % 3];
+      const item = document.createElement('div');
+      item.style.cssText = `display: flex; justify-content: space-between; align-items: center; font-size: 13px; color: var(--text); padding: 4px 8px; background: rgba(255,255,255,0.02); border-radius: 6px;`;
+      item.innerHTML = `
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <div style="width: 6px; height: 6px; border-radius: 50%; background: ${col};"></div>
+          <span style="color: var(--text2); font-size: 11px;">${label}</span>
+        </div>
+        <div style="font-weight: 600;">${val.toLocaleString('en-US')} <span style="color: var(--text2); font-weight: 400; font-size: 11px;">solicitudes</span></div>
+      `;
+      statusDetail.appendChild(item);
+    });
+  }
+
   // Table: Pending Refunds
   const tableBody = document.getElementById('refundTableBody');
   if (tableBody) {
@@ -864,6 +949,60 @@ function buildRefunds() {
       `;
       tableBody.appendChild(tr);
     });
+  }
+
+  // --- NEW: Generate Intelligent Insights for Refunds ---
+  const refInsightsList = document.getElementById('ref-insights-list');
+  if (refInsightsList) {
+    refInsightsList.innerHTML = '';
+    
+    // Insight 1: Concentration by Subsidiary
+    const sortedSubs = Object.entries(subAmt).sort((a, b) => b[1] - a[1]);
+    if (sortedSubs.length > 0) {
+      const topSub = sortedSubs[0][0];
+      const topVal = sortedSubs[0][1];
+      const totalAll = Object.values(subAmt).reduce((a, b) => a + b, 0);
+      const subPct = totalAll > 0 ? ((topVal / totalAll) * 100).toFixed(1) : 0;
+      
+      const li = document.createElement('li');
+      li.style.marginBottom = "15px";
+      li.innerHTML = `<strong>Concentración Operativa:</strong> La subsidiaria <strong>${topSub}</strong> concentra el ${subPct}% del volumen total de reembolsos. Se recomienda revisar si existen cuellos de botella específicos en los procesos de validación de esta entidad.`;
+      refInsightsList.appendChild(li);
+    }
+
+    // Insight 2: Status Efficiency
+    const pendingCount = statusCounts['Pendiente'] || 0;
+    const totalCount = rf.items.length;
+    const pendingPct = totalCount > 0 ? ((pendingCount / totalCount) * 100).toFixed(1) : 0;
+    
+    const liEff = document.createElement('li');
+    liEff.style.marginBottom = "8px";
+    if (pendingPct > 40) {
+      liEff.innerHTML = `<strong>Alerta de Procesamiento:</strong> El <strong>${pendingPct}%</strong> de las solicitudes están en estado <em>Pendiente</em>. Un porcentaje alto sugiere una carga de trabajo excedida o falta de documentación inicial por parte del solicitante.`;
+    } else {
+      liEff.innerHTML = `<strong>Flujo de Validación Saludable:</strong> El nivel de solicitudes pendientes es bajo (${pendingPct}%). La mayoría de los reembolsos están en etapas avanzadas de validación o ya completados.`;
+    }
+    refInsightsList.appendChild(liEff);
+
+    // Insight 3: Currency & Exposure
+    const nonUsdAmt = Object.entries(totalAmtByCurrency).reduce((s, [cur, amt]) => cur !== 'USD' ? s + getUSD(amt, cur) : s, 0);
+    const totalUsdEq = Object.entries(totalAmtByCurrency).reduce((s, [cur, amt]) => s + getUSD(amt, cur), 0);
+    const exposurePct = totalUsdEq > 0 ? ((nonUsdAmt / totalUsdEq) * 100).toFixed(1) : 0;
+
+    const liCur = document.createElement('li');
+    liCur.style.marginBottom = "15px";
+    liCur.innerHTML = `<strong>Impacto Cambiario:</strong> El ${exposurePct}% de los reembolsos se originan en monedas distintas al USD. La fluctuación de tipos de cambio (especialmente EUR/GBP) impacta directamente en el reporte consolidado de AR.`;
+    refInsightsList.appendChild(liCur);
+
+    // Insight 4: Average Age
+    const avgAge = rf.items.length > 0 ? (rf.items.reduce((s, i) => s + (i.age || 0), 0) / rf.items.length).toFixed(1) : 0;
+    const liAge = document.createElement('li');
+    if (avgAge > 7) {
+      liAge.innerHTML = `<strong>Ciclo de Vida Extendido:</strong> El tiempo promedio de resolución es de <strong>${avgAge} días</strong>. <em>Acción recomendada: Priorizar los casos que superan los 10 días para evitar reclamos de clientes.</em>`;
+    } else {
+      liAge.innerHTML = `<strong>Eficiencia en Resolución:</strong> El ciclo promedio de reembolso es de ${avgAge} días, cumpliendo con los estándares de servicio al cliente (SLA).`;
+    }
+    refInsightsList.appendChild(liAge);
   }
 }
 
@@ -967,17 +1106,17 @@ function buildCashApp() {
     const autoInsight = document.createElement('li');
     if (ca.kpis.autoMatch >= 80) {
       autoInsight.innerHTML = `<strong>Tasa de Aplicación Automática Saludable:</strong> El sistema está emparejando automáticamente el ${ca.kpis.autoMatch}% de los ingresos, reduciendo significativamente la carga manual.`;
-      autoInsight.style.marginBottom = "6px";
+      autoInsight.style.marginBottom = "15px";
     } else {
       autoInsight.innerHTML = `<strong>Oportunidad de Eficiencia (${ca.kpis.autoMatch}%):</strong> Aumentar el auto-match reduciría el tiempo extra manual promedio que actualmente requiere ${ca.kpis.manTime} min por partida.`;
-      autoInsight.style.marginBottom = "6px";
+      autoInsight.style.marginBottom = "15px";
     }
     insightsList.appendChild(autoInsight);
 
     // Insight 2: Unapplied vs Suspense
     const unappInsight = document.createElement('li');
     unappInsight.innerHTML = `<strong>Flujo de Efectivo Retenido:</strong> Actualmente, existen <strong>${fmt(ca.kpis.unapplied)}</strong> pendientes de aplicar a las cuentas de los clientes. Reducir esta cantidad impactaría positivamente en el flujo de caja inmediato. De este monto total, <strong>${fmt(ca.kpis.suspense)}</strong> se encuentran etiquetados como <em>Cuenta de Suspenso</em> por estar totalmente sin identificar.`;
-    unappInsight.style.marginBottom = "6px";
+    unappInsight.style.marginBottom = "15px";
     insightsList.appendChild(unappInsight);
 
     // Insight 3: Biggest Suspense Offender
@@ -991,7 +1130,7 @@ function buildCashApp() {
 
     const susInsight = document.createElement('li');
     susInsight.innerHTML = `<strong>Causa Principal de Descuadres:</strong> El motivo #1 de partidas sin registrar es por <strong>${topReason}</strong> (${maxSusVal}% en la muestra de suspenso). <em>Acción recomendada: Automatizar recordatorios para que los clientes adjunten esta información en sus comprobantes de pago.</em>`;
-    susInsight.style.marginBottom = "6px";
+    susInsight.style.marginBottom = "15px";
     insightsList.appendChild(susInsight);
 
     // Insight 4: YoY Comparison Chart Analysis
@@ -2193,6 +2332,8 @@ const esToEn = {
   "Monto Refund": "Refund Amount",
   "Motivo": "Reason",
   "Fecha Solicitud": "Request Date",
+  "Responsable": "Owner",
+  "Acciones": "Actions",
   "Cartera Saludable": "Healthy Portfolio",
   "Investigando": "Investigating",
   "Contactado": "Contacted",
@@ -2254,7 +2395,26 @@ const esToEn = {
   "Actual": "Actual",
   "Anterior": "Previous",
   "Ene": "Jan", "Feb": "Feb", "Mar": "Mar", "Abr": "Apr", "May": "May", "Jun": "Jun",
-  "Jul": "Jul", "Ago": "Aug", "Sep": "Sep", "Oct": "Oct", "Nov": "Nov", "Dic": "Dec"
+  "Jul": "Jul", "Ago": "Aug", "Sep": "Sep", "Oct": "Oct", "Nov": "Nov", "Dic": "Dec",
+  "Análisis Inteligente de Refunds": "Intelligent Refunds Analysis",
+  "Concentración Operativa:": "Operational Concentration:",
+  "Alerta de Procesamiento:": "Processing Alert:",
+  "Impacto Cambiario:": "FX Impact:",
+  "Ciclo de Vida Extendido:": "Extended Lifecycle:",
+  "subsidiaria": "subsidiary",
+  "concentra el": "concentrates",
+  "del volumen total de reembolsos. Se recomienda revisar si existen cuellos de botella específicos en los procesos de validación de esta entidad.": "of the total refund volume. It is recommended to check for specific bottlenecks in the validation processes of this entity.",
+  "de las solicitudes están en estado": "of requests are in",
+  "Pendiente. Un porcentaje alto sugiere una carga de trabajo excedida o falta de documentación inicial por parte del solicitante.": "Pending. A high percentage suggests an overloaded workload or lack of initial documentation from the requester.",
+  "Flujo de Validación Saludable:": "Healthy Validation Flow:",
+  "El nivel de solicitudes pendientes es bajo": "The level of pending requests is low",
+  "La mayoría de los reembolsos están en etapas avanzadas de validación o ya completados.": "Most refunds are in advanced stages of validation or already completed.",
+  "de los reembolsos se originan en monedas distintas al USD. La fluctuación de tipos de cambio (especialmente EUR/GBP) impacta directamente en el reporte consolidado de AR.": "of refunds originate in currencies other than USD. Fluctuations in exchange rates (especially EUR/GBP) directly impact the consolidated AR report.",
+  "El tiempo promedio de resolución es de": "The average resolution time is",
+  "Acción recomendada: Priorizar los casos que superan los 10 días para evitar reclamos de clientes.": "Recommended action: Prioritize cases exceeding 10 days to avoid client claims.",
+  "Consolidado Histórico (Ventana de 6 Meses)": "Historical Consolidated (6-Month Window)",
+  "Total": "Total",
+  "USD Eq.": "USD Eq."
 };
 
 const enToEs = Object.fromEntries(Object.entries(esToEn).map(([k,v]) => [v,k]));
@@ -2312,7 +2472,7 @@ const observer = new MutationObserver((mutations) => {
 
 // Attach observer to containers
 window.addEventListener('load', () => {
-    const containersToWatch = ['riskTableBody', 'seg-strategic', 'seg-alert', 'seg-stable', 'seg-lowrisk', 'projectionTable', 'caTableBody', 'refundTableBody', 'ca-insights-list'];
+    const containersToWatch = ['riskTableBody', 'seg-strategic', 'seg-alert', 'seg-stable', 'seg-lowrisk', 'projectionTable', 'caTableBody', 'refundTableBody', 'ca-insights-list', 'ref-insights-list', 'refChartDetails'];
     containersToWatch.forEach(id => {
         const el = document.getElementById(id);
         if(el) observer.observe(el, { childList: true, subtree: true, characterData: true });
