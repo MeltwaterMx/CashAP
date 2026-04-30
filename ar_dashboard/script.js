@@ -588,17 +588,27 @@ function buildRefundComparisonChart() {
   const growthPct = totalPrevUSD > 0 ? ((totalActualUSD - totalPrevUSD) / totalPrevUSD * 100).toFixed(1) : '0.0';
 
   const elActual = document.getElementById('refCompTotalActual');
-  const elPrev = document.getElementById('refCompTotalPrev');
+  const elActualSub = document.getElementById('refCompTotalActualSub');
   const elGrowth = document.getElementById('refCompGrowth');
   const elBest = document.getElementById('refCompBestMonth');
+  const elCount = document.getElementById('refTotalCount');
 
-  if (elActual) elActual.textContent = fmt(totalActualUSD) + ' (USD Eq.)';
-  if (elPrev) elPrev.textContent = fmt(totalPrevUSD) + ' (USD Eq.)';
+  if (elActual) elActual.textContent = fmt(totalActualUSD);
+  if (elActualSub) {
+     // Breakdown in subtext
+     const breakdown = currenciesFound.map(cur => {
+        const total = rf.items.reduce((s, i) => i.currency === cur ? s + (Number(i.amount) || 0) : s, 0);
+        return `${fmt(total)} ${cur}`;
+     }).join(' · ');
+     elActualSub.textContent = breakdown;
+  }
   if (elGrowth) {
     const sign = +growthPct >= 0 ? '+' : '';
     elGrowth.textContent = `${sign}${growthPct}%`;
-    elGrowth.style.color = +growthPct >= 0 ? '#10b981' : '#ef4444';
+    const card = document.getElementById('refGrowthCard');
+    if (card) card.style.borderLeft = +growthPct >= 0 ? '4px solid #10b981' : '4px solid #ef4444';
   }
+  if (elCount) elCount.textContent = rf.items.length;
 
   // Best Month calculation (using USD normalization for comparison)
   let maxMonthUSD = 0;
@@ -613,7 +623,7 @@ function buildRefundComparisonChart() {
        bestMonthLabel = rollingLabels[i];
      }
   });
-  if (elBest) elBest.textContent = `${bestMonthLabel} · ${fmt(maxMonthUSD)} (USD Eq.)`;
+  if (elBest) elBest.textContent = `${bestMonthLabel} · ${fmt(maxMonthUSD)}`;
 
   // 5. Delta Badges (MoM)
   const deltaRow = document.getElementById('refCompDeltaRow');
@@ -622,37 +632,44 @@ function buildRefundComparisonChart() {
     rollingKeys.forEach((k, i) => {
       if (i === 0) return;
       const prevK = rollingKeys[i-1];
-      let currTotal = 0, prevTotal = 0;
+      let currTotalUSD = 0, prevTotalUSD = 0;
       currenciesFound.forEach(cur => {
-        currTotal += (dataPoints[k][cur] || 0);
-        prevTotal += (dataPoints[prevK][cur] || 0);
+        currTotalUSD += getUSD(dataPoints[k][cur] || 0, cur);
+        prevTotalUSD += getUSD(dataPoints[prevK][cur] || 0, cur);
       });
-      if (prevTotal === 0 && currTotal === 0) return;
+      if (prevTotalUSD === 0 && currTotalUSD === 0) return;
       
-      const diff = currTotal - prevTotal;
-      const pctVal = prevTotal > 0 ? ((diff / prevTotal) * 100).toFixed(1) : '100';
+      const diff = currTotalUSD - prevTotalUSD;
+      const pctVal = prevTotalUSD > 0 ? ((diff / prevTotalUSD) * 100).toFixed(1) : '100';
       const sign = diff >= 0 ? '+' : '';
       const cls = diff >= 0 ? 'positive' : 'negative';
       const badge = document.createElement('div');
       badge.className = `comp-delta-badge ${cls}`;
-      badge.innerHTML = `<span class="delta-month">${rollingLabels[i]}</span><span>${sign}${pctVal}% MoM</span>`;
+      badge.style.minWidth = '80px';
+      badge.innerHTML = `<span class="delta-month" style="font-size:8px;">${rollingLabels[i]}</span><span style="font-size:12px;">${sign}${pctVal}%</span>`;
       deltaRow.appendChild(badge);
     });
   }
 
-  // 6. Build Chart
-  const CURRENCY_COLORS = { 'USD': '#8b5cf6', 'EUR': '#0ea5e9', 'MXN': '#10b981', 'GBP': '#f59e0b', 'CAD': '#f43f5e' };
+  // 6. Build Chart with Premium Colors
+  const CURRENCY_COLORS = { 
+    'USD': '#a855f7', // Vivid Purple
+    'EUR': '#3b82f6', // Bright Blue
+    'MXN': '#10b981', // Emerald
+    'GBP': '#f59e0b', // Amber
+    'CAD': '#ec4899'  // Pink
+  };
   const datasets = currenciesFound.map((cur, i) => {
-    const col = CURRENCY_COLORS[cur] || (i === 0 ? '#8b5cf6' : '#3b82f6');
+    const col = CURRENCY_COLORS[cur] || (i === 0 ? '#a855f7' : '#3b82f6');
     return {
       label: `Refunds (${cur})`,
       data: rollingKeys.map(k => dataPoints[k][cur] || 0),
-      borderColor: col, borderWidth: 4, pointRadius: 6, pointHoverRadius: 9,
+      borderColor: col, borderWidth: 3, pointRadius: 4, pointHoverRadius: 7,
       pointBackgroundColor: col, pointBorderColor: '#fff', pointBorderWidth: 2, tension: 0.4, fill: true,
       backgroundColor: (context) => {
         const ctx = context.chart.ctx;
-        const gradient = ctx.createLinearGradient(0, 0, 0, 300);
-        gradient.addColorStop(0, hexToRgbA(col, 0.2));
+        const gradient = ctx.createLinearGradient(0, 0, 0, 400);
+        gradient.addColorStop(0, hexToRgbA(col, 0.15));
         gradient.addColorStop(1, hexToRgbA(col, 0));
         return gradient;
       }

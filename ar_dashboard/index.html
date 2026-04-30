@@ -528,68 +528,60 @@
 
             <!-- REFUNDS TAB -->
             <div id="tab-refunds" class="tab-content">
-                <div class="kpi-grid" style="grid-template-columns: repeat(3, 1fr); gap: 20px;">
-                    <div class="kpi-card accent-purple">
-                        <div class="kpi-content">
-                            <div class="kpi-title">Total Refunds Pendientes</div>
-                            <div class="kpi-value" id="refTotalAmt">$0</div>
-                        </div>
+                <!-- PREMIUM KPI GRID -->
+                <div class="kpi-grid" style="margin-bottom: 24px;">
+                    <!-- Consolidado USD -->
+                    <div class="kpi-card" style="border-left: 4px solid #8b5cf6;">
+                        <div class="kpi-label">Total Reembolsos (USD Eq.)</div>
+                        <div class="kpi-value" id="refCompTotalActual" style="color: #8b5cf6; font-size: 26px;">—</div>
+                        <div class="kpi-trend" id="refCompTotalActualSub" style="font-size: 11px; opacity: 0.7;">Normalizado con FX Real</div>
                         <div class="kpi-icon-bg">💸</div>
                     </div>
-                    <div class="kpi-card accent-blue">
-                        <div class="kpi-content">
-                            <div class="kpi-title">Solicitudes Abiertas</div>
-                            <div class="kpi-value" id="refTotalCount">0</div>
-                        </div>
+                    <!-- Solicitudes Abiertas -->
+                    <div class="kpi-card" style="border-left: 4px solid #3b82f6;">
+                        <div class="kpi-label">Solicitudes Abiertas</div>
+                        <div class="kpi-value" id="refTotalCount" style="color: #3b82f6;">0</div>
+                        <div class="kpi-trend" style="font-size: 11px; opacity: 0.7;">Pendientes de Validación</div>
                         <div class="kpi-icon-bg">📋</div>
                     </div>
-                    <div class="kpi-card accent-orange">
-                        <div class="kpi-content">
-                            <div class="kpi-title">Mayor Antigüedad (Días)</div>
-                            <div class="kpi-value" id="refMaxAge">0</div>
-                        </div>
-                        <div class="kpi-icon-bg">⏳</div>
+                    <!-- Crecimiento LfL -->
+                    <div class="kpi-card" id="refGrowthCard" style="border-left: 4px solid #10b981;">
+                        <div class="kpi-label">Crecimiento LfL</div>
+                        <div class="kpi-value" id="refCompGrowth" style="color: #10b981;">—</div>
+                        <div class="kpi-trend" id="refGrowthTrend" style="font-size: 11px; opacity: 0.7;">vs Año Anterior</div>
+                        <div class="kpi-icon-bg">📈</div>
+                    </div>
+                    <!-- Mejor Mes -->
+                    <div class="kpi-card" style="border-left: 4px solid #f59e0b;">
+                        <div class="kpi-label">Mejor Mes (2026)</div>
+                        <div class="kpi-value" id="refCompBestMonth" style="font-size: 20px; color: #f59e0b;">—</div>
+                        <div class="kpi-trend" style="font-size: 11px; opacity: 0.7;">Pico de Operación</div>
+                        <div class="kpi-icon-bg">🏆</div>
                     </div>
                 </div>
 
-                <!-- NEW: Interannual Comparison for Refunds -->
+                <!-- DYNAMIC CHART SECTION -->
                 <div class="charts-row" style="grid-template-columns: 1fr; margin-bottom: 24px;">
-                    <div class="chart-card" style="padding: 20px 24px 24px; max-height: none; height: auto;">
-                        <div class="chart-header" style="margin-bottom: 4px;">
-                            <h3>Análisis de Reembolsos por Moneda (Rolling 6M)</h3>
-                            <span class="chart-tag" id="refChartTag">Evolución Mensual</span>
+                    <div class="chart-card" style="padding: 24px; max-height: none; height: auto; border-top: 2px solid rgba(139, 92, 246, 0.3); background: rgba(15, 23, 42, 0.4); backdrop-filter: blur(10px);">
+                        <div class="chart-header" style="margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <h3 style="margin:0; font-size: 18px; letter-spacing: -0.5px; color: #fff;">Evolución de Reembolsos por Moneda</h3>
+                                <p style="margin:4px 0 0; font-size: 13px; color: var(--text2);">Análisis de tendencias · Últimos 6 meses móviles</p>
+                            </div>
+                            <div id="refCompDeltaRow" style="display:flex; gap:10px;"></div>
                         </div>
 
-                        <!-- KPI Summary Pills -->
-                        <div id="refCompKpis" style="display:flex; gap:12px; flex-wrap:wrap; margin-bottom:14px; margin-top:6px;">
-                            <div class="comp-kpi-pill">
-                                <span class="comp-kpi-label">Total Reembolsos YTD</span>
-                                <span class="comp-kpi-val" id="refCompTotalActual" style="color:#8b5cf6;">—</span>
-                            </div>
-                            <div class="comp-kpi-pill">
-                                <span class="comp-kpi-label">Prev. Year (Same Period)</span>
-                                <span class="comp-kpi-val" id="refCompTotalPrev" style="color:rgba(255,255,255,0.4);">—</span>
-                            </div>
-                            <div class="comp-kpi-pill">
-                                <span class="comp-kpi-label">Crecimiento LfL</span>
-                                <span class="comp-kpi-val" id="refCompGrowth" style="color:#10b981;">—</span>
-                            </div>
-                            <div class="comp-kpi-pill">
-                                <span class="comp-kpi-label">Mejor Mes (2026)</span>
-                                <span class="comp-kpi-val" id="refCompBestMonth" style="color:#f59e0b;">—</span>
-                            </div>
-                        </div>
-
-                        <div class="comp-chart-wrap" style="position: relative; height:350px;">
+                        <div class="comp-chart-wrap" style="position: relative; height:400px; width: 100%;">
                             <canvas id="refComparisonChart"></canvas>
                         </div>
-
-                        <!-- Month-by-month delta badges -->
-                        <div id="refCompDeltaRow" style="display:flex; gap:6px; flex-wrap:wrap; margin-top:14px; justify-content:center;">
-                        </div>
                     </div>
                 </div>
 
+                <!-- ANALISIS DE REFUNDS TABLE -->
+                <div class="section-header">
+                    <h3>Detalle de Análisis de Refunds</h3>
+                    <p>Gestión individual de partidas pendientes de reembolso.</p>
+                </div>
                 <div class="charts-row" style="grid-template-columns: 1fr 1fr;">
                     <div class="chart-card" style="max-height: none; height: auto;">
                         <h3 class="chart-title">Por Subsidiaria</h3>
